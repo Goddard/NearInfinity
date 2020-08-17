@@ -3,3 +3,5 @@ NearInfinity.jar
 /bin
 /build
 /.settings
+.idea
+NearInfinity.iml
