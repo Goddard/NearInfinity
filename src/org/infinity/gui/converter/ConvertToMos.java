@@ -67,169 +67,11 @@ public class ConvertToMos extends ChildFrame implements ActionListener, Property
   private JLabel lPvrzInfo;
   private JComboBox<String> cbCompression;
   private JCheckBox cbCompress, cbCloseOnExit;
-//  private Task workerConvert;
 
   private DefaultTableModel inputTableModel;
   private DefaultTableModel outputTableModel;
   private JScrollPane spInputScroll;
   private JScrollPane spOutputScroll;
-
-  /**
-   * Converts an image into a MOS V2 resource.
-   * @param parent This parameter is needed for the progress monitor only.
-   * @param img The source image to convert into a MOS resource.
-   * @param mosFileName The name of the resulting MOS file.
-   * @param dxtType The desired compression type.
-   * @param pvrzIndex The starting index for PVRZ files.
-   * @param result Returns more specific information about the conversion process. Data placed in the
-   *               first item indicates success, data in the second item indicates failure.
-   * @param showProgress Specify whether to show a progress monitor (needs a valid 'parent' parameter).
-   * @return {@code true} if the conversion finished successfully, {@code false} otherwise.
-   */
-  public static boolean convertV2(Component parent, BufferedImage img, String mosFileName,
-                                  DxtEncoder.DxtType dxtType, int pvrzIndex,
-                                  List<String> result, boolean showProgress)
-  {
-    // checking parameters
-    if (result == null) {
-      return false;
-    }
-    if (img == null) {
-      result.add(null);
-      result.add("No source image specified.");
-      return false;
-    }
-    if (mosFileName == null || mosFileName.isEmpty()) {
-      result.add(null);
-      result.add("No output filename specified.");
-      return false;
-    }
-    if (pvrzIndex < 0 || pvrzIndex > 99999) {
-      result.add(null);
-      result.add("PVRZ index is out of range [0..99999].");
-      return false;
-    }
-
-    // preparing variables
-    ProgressMonitor progress = null;
-    int width = img.getWidth();
-    int height = img.getHeight();
-    List<BinPack2D> pageList = new ArrayList<BinPack2D>();
-    List<MosEntry> entryList = new ArrayList<MosEntry>();
-
-    try {
-      if (showProgress) {
-        // preparing progress meter
-        progress = new ProgressMonitor(parent, "Converting MOS...", "Preparing data", 0, 5);
-        progress.setMillisToDecideToPopup(0);
-        progress.setMillisToPopup(0);
-        progress.setProgress(0);
-      }
-
-      // processing tiles
-      final int pageDim = 1024;
-      final BinPack2D.HeuristicRules binPackRule = BinPack2D.HeuristicRules.BOTTOM_LEFT_RULE;
-
-      int x = 0, y = 0, pOfs = 0;
-      while (pOfs < width*height) {
-        int w = Math.min(pageDim, width - x);
-        int h = Math.min(pageDim, height - y);
-        Dimension space = new Dimension((w+3) & ~3, (h+3) & ~3);
-        int pageIdx = -1;
-        Rectangle rectMatch = null;
-        for (int i = 0; i < pageList.size(); i++) {
-          BinPack2D packer = pageList.get(i);
-          rectMatch = packer.insert(space.width, space.height, binPackRule);
-          if (rectMatch.height > 0) {
-            pageIdx = i;
-            break;
-          }
-        }
-
-        // create new page?
-        if (pageIdx < 0) {
-          BinPack2D packer = new BinPack2D(pageDim, pageDim);
-          pageList.add(packer);
-          pageIdx = pageList.size() - 1;
-          rectMatch = packer.insert(space.width, space.height, binPackRule);
-        }
-
-        // register page entry
-        MosEntry entry = new MosEntry(pvrzIndex + pageIdx,
-                new Point(rectMatch.x, rectMatch.y),
-                w, h, new Point(x, y));
-        entryList.add(entry);
-
-        // advance scanning
-        if (x + pageDim >= width) {
-          x = 0;
-          y += pageDim;
-        } else {
-          x += pageDim;
-        }
-        pOfs = y*width + x;
-      }
-
-      // check PVRZ index again
-      if (pvrzIndex + pageList.size() > 100000) {
-        result.add(null);
-        result.add(String.format("One or more PVRZ indices exceed the max. possible value of 99999.\n" +
-                        "Please choose a start index smaller than or equal to %d.",
-                100000 - pageList.size()));
-        return false;
-      }
-
-      byte[] dst = new byte[24 + entryList.size()*28];   // header + tiles
-      int dstOfs = 0;
-
-      // writing MOS header and data
-      System.arraycopy("MOS V2  ".getBytes(), 0, dst, 0, 8);
-      DynamicArray.putInt(dst, 8, width);
-      DynamicArray.putInt(dst, 12, height);
-      DynamicArray.putInt(dst, 16, entryList.size());
-      DynamicArray.putInt(dst, 20, 24);
-      dstOfs += 24;
-      for (int i = 0; i < entryList.size(); i++, dstOfs += 28) {
-        MosEntry entry = entryList.get(i);
-        DynamicArray.putInt(dst, dstOfs, entry.page);
-        DynamicArray.putInt(dst, dstOfs + 4, entry.srcLocation.x);
-        DynamicArray.putInt(dst, dstOfs + 8, entry.srcLocation.y);
-        DynamicArray.putInt(dst, dstOfs + 12, entry.width);
-        DynamicArray.putInt(dst, dstOfs + 16, entry.height);
-        DynamicArray.putInt(dst, dstOfs + 20, entry.dstLocation.x);
-        DynamicArray.putInt(dst, dstOfs + 24, entry.dstLocation.y);
-      }
-
-      // writing MOS file to disk
-      Path mosFile = FileManager.resolve(mosFileName);
-      try (OutputStream os = StreamUtils.getOutputStream(mosFile, true)) {
-        os.write(dst);
-      } catch (Exception e) {
-        e.printStackTrace();
-        result.add(null);
-        result.add("Error writing MOS file to disk.");
-        return false;
-      }
-      dst = null;
-
-      // generating PVRZ files
-      if (!createPvrzPages(mosFile.getParent(), img, dxtType, pageList, entryList,
-              result, progress)) {
-        return false;
-      }
-    } finally {
-      // some cleaning up
-      img.flush();
-      if (progress != null) {
-        progress.close();
-        progress = null;
-      }
-    }
-
-    // generating conversion summary
-    result.add("Conversion finished successfully.");
-    return true;
-  }
 
   // Returns a list of supported graphics file formats
   private static FileNameExtensionFilter[] getInputFilters()
@@ -401,7 +243,6 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     /**
      * Converts an image into a MOS V1 resource.
-     * @param parent This parameter is needed for the progress monitor only.
      * @param img The source image to convert into a MOS resource.
      * @param mosFileName The name of the resulting MOS file.
      * @param compressed If {@code true}, converts into a compressed BAMC file.
@@ -548,35 +389,156 @@ class TaskPropertyChange implements PropertyChangeListener {
       return true;
     }
 
-    @Override
-    protected void process(java.util.List<Integer> c) {
-      int lastValue = c.get(c.size()-1);
-//      outputTableModel.setValueAt(c, fileCount, 1);
-//      outputTableModel.setValueAt(lastValue, fileCount, 1);
-//      tfOutputTableV1.setModel(outputTableModel);
-//      tfOutputTableV1.getModel().setValueAt(lastValue, fileCount, 1); //currentTask
-//      tfOutputTableV1.updateUI();
+    /**
+     * Converts an image into a MOS V2 resource.
+     * @param img The source image to convert into a MOS resource.
+     * @param mosFileName The name of the resulting MOS file.
+     * @param dxtType The desired compression type.
+     * @param pvrzIndex The starting index for PVRZ files.
+     * @param result Returns more specific information about the conversion process. Data placed in the
+     *               first item indicates success, data in the second item indicates failure.
+     * @return {@code true} if the conversion finished successfully, {@code false} otherwise.
+     */
+    public boolean convertV2(BufferedImage img, String mosFileName, DxtEncoder.DxtType dxtType, int pvrzIndex, List<String> result) {
+      // checking parameters
+      if (result == null) {
+        return false;
+      }
 
+      if (img == null) {
+        result.add(null);
+        result.add("No source image specified.");
+        return false;
+      }
 
-//      tfOutputTableV1.setValueAt(lastValue, fileCount, 1); //currentTask
-      System.out.println("Process C Value " + lastValue);
+      if (mosFileName == null || mosFileName.isEmpty()) {
+        result.add(null);
+        result.add("No output filename specified.");
+        return false;
+      }
+
+      if (pvrzIndex < 0 || pvrzIndex > 99999) {
+        result.add(null);
+        result.add("PVRZ index is out of range [0..99999].");
+        return false;
+      }
+
+      // preparing variables
+      ProgressMonitor progress = null;
+      int width = img.getWidth();
+      int height = img.getHeight();
+      List<BinPack2D> pageList = new ArrayList<BinPack2D>();
+      List<MosEntry> entryList = new ArrayList<MosEntry>();
+
+      try {
+        // processing tiles
+        final int pageDim = 1024;
+        final BinPack2D.HeuristicRules binPackRule = BinPack2D.HeuristicRules.BOTTOM_LEFT_RULE;
+
+        int x = 0, y = 0, pOfs = 0;
+        while (pOfs < width*height) {
+          int w = Math.min(pageDim, width - x);
+          int h = Math.min(pageDim, height - y);
+          Dimension space = new Dimension((w+3) & ~3, (h+3) & ~3);
+          int pageIdx = -1;
+          Rectangle rectMatch = null;
+          for (int i = 0; i < pageList.size(); i++) {
+            BinPack2D packer = pageList.get(i);
+            rectMatch = packer.insert(space.width, space.height, binPackRule);
+            if (rectMatch.height > 0) {
+              pageIdx = i;
+              break;
+            }
+          }
+
+          // create new page?
+          if (pageIdx < 0) {
+            BinPack2D packer = new BinPack2D(pageDim, pageDim);
+            pageList.add(packer);
+            pageIdx = pageList.size() - 1;
+            rectMatch = packer.insert(space.width, space.height, binPackRule);
+          }
+
+          // register page entry
+          MosEntry entry = new MosEntry(pvrzIndex + pageIdx,
+                  new Point(rectMatch.x, rectMatch.y),
+                  w, h, new Point(x, y));
+          entryList.add(entry);
+
+          // advance scanning
+          if (x + pageDim >= width) {
+            x = 0;
+            y += pageDim;
+          } else {
+            x += pageDim;
+          }
+          pOfs = y*width + x;
+        }
+
+        // check PVRZ index again
+        if (pvrzIndex + pageList.size() > 100000) {
+          result.add(null);
+          result.add(String.format("One or more PVRZ indices exceed the max. possible value of 99999.\n" +
+                          "Please choose a start index smaller than or equal to %d.",
+                  100000 - pageList.size()));
+          return false;
+        }
+
+        byte[] dst = new byte[24 + entryList.size()*28];   // header + tiles
+        int dstOfs = 0;
+
+        // writing MOS header and data
+        System.arraycopy("MOS V2  ".getBytes(), 0, dst, 0, 8);
+        DynamicArray.putInt(dst, 8, width);
+        DynamicArray.putInt(dst, 12, height);
+        DynamicArray.putInt(dst, 16, entryList.size());
+        DynamicArray.putInt(dst, 20, 24);
+        dstOfs += 24;
+        for (int i = 0; i < entryList.size(); i++, dstOfs += 28) {
+          MosEntry entry = entryList.get(i);
+          DynamicArray.putInt(dst, dstOfs, entry.page);
+          DynamicArray.putInt(dst, dstOfs + 4, entry.srcLocation.x);
+          DynamicArray.putInt(dst, dstOfs + 8, entry.srcLocation.y);
+          DynamicArray.putInt(dst, dstOfs + 12, entry.width);
+          DynamicArray.putInt(dst, dstOfs + 16, entry.height);
+          DynamicArray.putInt(dst, dstOfs + 20, entry.dstLocation.x);
+          DynamicArray.putInt(dst, dstOfs + 24, entry.dstLocation.y);
+        }
+
+        // writing MOS file to disk
+        Path mosFile = FileManager.resolve(mosFileName);
+        try (OutputStream os = StreamUtils.getOutputStream(mosFile, true)) {
+          os.write(dst);
+        } catch (Exception e) {
+          e.printStackTrace();
+          result.add(null);
+          result.add("Error writing MOS file to disk.");
+          return false;
+        }
+        dst = null;
+
+        // generating PVRZ files
+        if (!createPvrzPages(mosFile.getParent(), img, dxtType, pageList, entryList,
+                result, progress)) {
+          return false;
+        }
+      } finally {
+        // some cleaning up
+        img.flush();
+        if (progress != null) {
+          progress.close();
+          progress = null;
+        }
+      }
+
+      // generating conversion summary
+      result.add("Conversion finished successfully.");
+      return true;
     }
 
     public void setProgressIndex(Integer progressIndex) {
       setProgress(this.progressIndex);
       this.progressIndex = progressIndex;
-//      Double percentage = ((double)this.progressIndex / (double)this.progressMax) * 100;
-//      System.out.println("Progress " + this.progressIndex + " Total Tiles " + this.progressMax + " File Index " + fileCount + " Percentage " + Math.round(percentage));
-//      DefaultTableModel df = (DefaultTableModel)tfOutputTableV1.getModel();
-//      tfOutputTableV1.getModel().setValueAt(Math.round(percentage), fileCount, 1); //currentTask
-//      tfOutputTableV1.setValueAt(Math.round(percentage) + "%", fileCount, 1); //currentTask
-//      outputTableModel.setValueAt(Math.round(percentage), fileCount, 1);
-//      df.fireTableCellUpdated(fileCount, 1);
-//      tfOutputTableV1.setModel(df);
-//      publish(((int) Math.round(percentage)));
-//      tfOutputTableV1
-//      tfOutputTableV1.getModel().fireTableCellUpdated();
-//      tfOutputTableV1.updateUI(); //fireTableChanged
     }
 
     public Integer progressMax;
@@ -687,56 +649,7 @@ class TaskPropertyChange implements PropertyChangeListener {
   @Override
   public void propertyChange(PropertyChangeEvent event)
   {
-    System.out.println("Event Name : " + event.getPropertyName());
 
-    if ("progress" == event.getPropertyName()) {
-      Integer progressIndex = (Integer) event.getNewValue();
-//      tfOutputTableV1.setValueAt((progressIndex / progressMax), fileCount, 1);
-//      tfOutputTableV1.set
-//      tfOutputTableV1.getModel().notifyAll();
-//      tfOutputTableV1.notifyAll();
-    }
-
-//    if (event.getSource() == workerConvert) {
-//      if ("state".equals(event.getPropertyName()) && SwingWorker.StateValue.DONE == event.getNewValue()) {
-////        if (blocker != null) {
-////          blocker.setBlocked(false);
-////          blocker = null;
-////        }
-//        List<String> sl = null;
-//        try {
-//          sl = workerConvert.get();
-//        } catch (Exception e) {
-//          e.printStackTrace();
-//        }
-//        workerConvert = null;
-//
-//        boolean isError = false;
-//        String s = null;
-//        if (sl != null && !sl.isEmpty()) {
-//          if (sl.get(0) != null) {
-//            s = sl.get(0);
-//          } else if (sl.size() > 1 && sl.get(1) != null) {
-//            s = sl.get(1);
-//            isError = true;
-//          }
-//        }
-//        if (s != null) {
-//          if (isError) {
-//            JOptionPane.showMessageDialog(this, s, "Error", JOptionPane.ERROR_MESSAGE);
-//          } else {
-//            JOptionPane.showMessageDialog(this, s, "Information", JOptionPane.INFORMATION_MESSAGE);
-//            if (cbCloseOnExit.isSelected()) {
-//              hideWindow();
-//            } else {
-//              clear();
-//            }
-//          }
-//        } else {
-//          JOptionPane.showMessageDialog(this, "Unknown error!", "Error", JOptionPane.ERROR_MESSAGE);
-//        }
-//      }
-//    }
   }
 
 //--------------------- End Interface PropertyChangeListener ---------------------
@@ -764,13 +677,6 @@ class TaskPropertyChange implements PropertyChangeListener {
   @Override
   public void focusLost(FocusEvent event)
   {
-//    if (event.getSource() == tfInputV1) {
-//      tfInputV2.setText(tfInputV1.getText());
-//      bConvert.setEnabled(isReady());
-//    } else if (event.getSource() == tfInputV2) {
-//      tfInputV1.setText(tfInputV2.getText());
-//      bConvert.setEnabled(isReady());
-
     if (event.getSource() == tfOutputV1) {
       tfOutputV2.setText(tfOutputV1.getText());
       bConvert.setEnabled(isReady());
@@ -780,29 +686,6 @@ class TaskPropertyChange implements PropertyChangeListener {
     }
   }
 
-//  private class ProgressBarModel extends AbstractTableModel {
-//
-//    @Override
-//    public int getRowCount() {
-//      return 0;
-//    }
-//
-//    @Override
-//    public int getColumnCount() {
-//      return 2;
-//    }
-//
-//    @Override
-//    public Object getValueAt(int row, int col) {
-//      return String.valueOf(row) + ", " + String.valueOf(col);
-//    }
-//
-//    @Override
-//    public void setValueAt(Object aValue, int row, int col) {
-//      // update internal model and notify listeners
-//      fireTableCellUpdated(row, col);
-//    }
-//  }
 //--------------------- End Interface FocusListener ---------------------
 
   private void init()
@@ -1210,9 +1093,8 @@ class TaskPropertyChange implements PropertyChangeListener {
       }
 
       workerTask.convertV1(srcImage, mosFilePath, isMOSC, result);
-      //String.valueOf((workerTask.fileCount+1)), workerTask.progressIndex, workerTask.progressMax //tfOutputV1.getText()
     } else if (tabPane.getSelectedIndex() == 1) {
-      convertV2(this, srcImage, tfOutputV2.getText(), dxtType, pvrzIndex, result, true);
+      workerTask.convertV2(srcImage, tfOutputV2.getText(), dxtType, pvrzIndex, result);
     } else {
       result.add(null);
       result.add("No MOS type specified!");
@@ -1220,8 +1102,6 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     return result;
   }
-
-
 //-------------------------- INNER CLASSES --------------------------
 
   private static class MosEntry
