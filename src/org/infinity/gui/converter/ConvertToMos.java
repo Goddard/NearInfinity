@@ -639,7 +639,7 @@ class TaskPropertyChange implements PropertyChangeListener {
       File[] filePaths = getImageFileName();
       if (filePaths != null) {
         for (File fileSelected : filePaths) {
-          System.out.println(fileSelected.getName());
+          Logger.getLogger(this.getClass().getName()).log(Level.INFO, "File Selected : " + fileSelected.getName());
           inputTableModel.addRow(new Object[] { fileSelected.getAbsolutePath()});
 
           fileName = StreamUtils.replaceFileExtension(fileSelected.getName(), "MOS");
@@ -964,9 +964,9 @@ class TaskPropertyChange implements PropertyChangeListener {
   private boolean isReady()
   {
     if (tfInputTableV1.getRowCount() > 0 && !tfOutputV1.getText().isEmpty()) {
-      for(String outPutTableFiles : getTableInputPaths()) {
+      for (String outPutTableFiles : getTableInputPaths()) {
         Path file = FileManager.resolve(outPutTableFiles);
-        if(!Files.isRegularFile(file)) {
+        if (!Files.isRegularFile(file)) {
           return false;
         }
       }
@@ -1050,8 +1050,9 @@ class TaskPropertyChange implements PropertyChangeListener {
   }
 
   private ArrayList<String> getTableOutputNames() {
-    ArrayList<String> list = new ArrayList<>();
-    if(tfOutputTableV1.getModel().getRowCount() > 0) {
+    final int count = tfOutputTableV1.getModel().getRowCount();
+    if (count > 0) {
+      final ArrayList<String> list = new ArrayList<>(count);
       for (int i = 0; i < tfOutputTableV1.getModel().getRowCount(); i++) {
         list.add(tfOutputTableV1.getModel().getValueAt(i, 0).toString());
       }
