@@ -244,6 +244,9 @@ class TaskPropertyChange implements PropertyChangeListener {
 
   class Task extends SwingWorker<List<String>, Integer> {
     public String inputPath;
+    public Integer fileCount;
+    public Integer progressIndex;
+
     public String getInputPath() {
       return inputPath;
     }
@@ -252,7 +255,6 @@ class TaskPropertyChange implements PropertyChangeListener {
       this.inputPath = inputPath;
     }
 
-    public Integer fileCount;
     public Integer getFileCount() {
       return fileCount;
     }
@@ -261,7 +263,7 @@ class TaskPropertyChange implements PropertyChangeListener {
       this.fileCount = fileCount;
     }
 
-    public Integer progressIndex;
+
     public Integer getProgressIndex() {
       return progressIndex;
     }
