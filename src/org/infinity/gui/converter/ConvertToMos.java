@@ -29,6 +29,8 @@ import java.util.List;
 import java.util.Vector;
 import java.util.concurrent.ExecutorService;
 import java.util.concurrent.Executors;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 import javax.imageio.ImageIO;
 import javax.swing.JTabbedPane;
@@ -340,7 +342,7 @@ class TaskPropertyChange implements PropertyChangeListener {
           progressIndexPer = progressIndex;
           progressMaxPer = progressMax;
           double percentage = Math.round((progressIndexPer / progressMaxPer) * 100);
-          System.out.println(progressIndex + " " + percentage);
+          Logger.getLogger(this.getClass().getName()).log(Level.INFO, progressIndex + " " + percentage);
           setProgress((int)percentage);
 
           int[] pixels = tileList.get(tileIdx);
@@ -398,9 +400,9 @@ class TaskPropertyChange implements PropertyChangeListener {
         try (OutputStream os = StreamUtils.getOutputStream(mosFile, true)) {
           os.write(dst);
         } catch (Exception e) {
-          e.printStackTrace();
+          Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Error writing file to disk : " + e.getMessage());
           result.add(null);
-          result.add("Error writing TIS file to disk.");
+          result.add("Error writing MOS file to disk.");
           return false;
         }
       } finally {
