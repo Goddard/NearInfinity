@@ -539,7 +539,7 @@ class TaskPropertyChange implements PropertyChangeListener {
         try (OutputStream os = StreamUtils.getOutputStream(mosFile, true)) {
           os.write(dst);
         } catch (Exception e) {
-          e.printStackTrace();
+          Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Unable to save MOS to disk : " + e.getMessage());
           result.add(null);
           result.add("Error writing MOS file to disk.");
           return false;
@@ -556,7 +556,6 @@ class TaskPropertyChange implements PropertyChangeListener {
         img.flush();
         if (progress != null) {
           progress.close();
-          progress = null;
         }
       }
 
