@@ -8,6 +8,8 @@ import javax.swing.JProgressBar;
 import javax.swing.JTable;
 import javax.swing.table.TableCellRenderer;
 import java.awt.Component;
+import java.util.logging.Level;
+import java.util.logging.Logger;
 
 public class ProgressCellRenderer extends JProgressBar implements TableCellRenderer {
 
@@ -37,7 +39,7 @@ public class ProgressCellRenderer extends JProgressBar implements TableCellRende
             try {
                 p = Integer.parseInt(sValue.substring(0, index));
             } catch (NumberFormatException e) {
-                System.out.println("Number Format Exception");
+                Logger.getLogger(String.valueOf(ProgressCellRenderer.class)).log(Level.WARNING, "Number Format Exception : " + e.getMessage());
             }
 
             this.setValue(p);
