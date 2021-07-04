@@ -335,7 +335,9 @@ class TaskPropertyChange implements PropertyChangeListener {
         int[] palette = new int[255];
         byte[] tilePalette = new byte[1024];
         byte[] tileData = new byte[64*64];
-        int curPalOfs = palOfs, curTableOfs = tableOfs, curDataOfs = dataOfs;
+        int curPalOfs = palOfs;
+        int curTableOfs = tableOfs;
+        int curDataOfs = dataOfs;
         IntegerHashMap<Byte> colorCache = new IntegerHashMap<Byte>(1536);   // caching RGBColor -> index
         for (int tileIdx = 0; tileIdx < tileList.size(); tileIdx++) {
           colorCache.clear();
@@ -425,7 +427,7 @@ class TaskPropertyChange implements PropertyChangeListener {
      * @param result Returns more specific information about the conversion process. Data placed in the
      *               first item indicates success, data in the second item indicates failure.
      * @return {@code true} if the conversion finished successfully, {@code false} otherwise.
-     */
+     */int curPalOfs = palOfs, curTableOfs = tableOfs, curDataOfs = dataOfs;
     public boolean convertV2(BufferedImage img, String mosFileName, DxtEncoder.DxtType dxtType, int pvrzIndex, List<String> result) {
       // checking parameters
       if (result == null) {
