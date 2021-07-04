@@ -728,7 +728,7 @@ class TaskPropertyChange implements PropertyChangeListener {
     JPanel pFilesInputV1 = new JPanel(new GridBagLayout());
     pFilesInputV1.setBorder(BorderFactory.createTitledBorder("Input Files"));
 
-    //output directory choice will defualt to source directory maybe?
+    // Output directory choice will default to source directory maybe?
     tfOutputV1 = new JTextField();
     tfOutputV1.setText("");
     tfOutputV1.addFocusListener(this);
