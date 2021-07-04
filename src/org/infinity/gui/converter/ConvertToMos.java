@@ -409,8 +409,8 @@ class TaskPropertyChange implements PropertyChangeListener {
           result.add("Error writing MOS file to disk.");
           return false;
         }
-      } finally {
-
+      } catch (Exception e) {
+        Logger.getLogger(this.getClass().getName()).log(Level.SEVERE, "Unable to convert tile" + e.getMessage());
       }
 
       // generating conversion summary
@@ -427,7 +427,7 @@ class TaskPropertyChange implements PropertyChangeListener {
      * @param result Returns more specific information about the conversion process. Data placed in the
      *               first item indicates success, data in the second item indicates failure.
      * @return {@code true} if the conversion finished successfully, {@code false} otherwise.
-     */int curPalOfs = palOfs, curTableOfs = tableOfs, curDataOfs = dataOfs;
+     */
     public boolean convertV2(BufferedImage img, String mosFileName, DxtEncoder.DxtType dxtType, int pvrzIndex, List<String> result) {
       // checking parameters
       if (result == null) {
