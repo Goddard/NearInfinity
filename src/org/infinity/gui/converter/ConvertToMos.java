@@ -71,6 +71,9 @@ import org.infinity.util.IntegerHashMap;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
+/**
+ * Class converts images to MOS type v1 and v2.  v1 has the ability to convert multiple files at once.
+ */
 public class ConvertToMos extends ChildFrame implements ActionListener, PropertyChangeListener, ChangeListener, FocusListener {
   private static String currentDir = Profile.getGameRoot().toString();
 
