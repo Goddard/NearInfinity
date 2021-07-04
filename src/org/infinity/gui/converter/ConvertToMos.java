@@ -677,7 +677,7 @@ class TaskPropertyChange implements PropertyChangeListener {
   @Override
   public void propertyChange(PropertyChangeEvent event)
   {
-
+    // required method for class
   }
 
 //--------------------- End Interface PropertyChangeListener ---------------------
