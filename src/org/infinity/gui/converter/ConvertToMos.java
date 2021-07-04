@@ -915,9 +915,6 @@ class TaskPropertyChange implements PropertyChangeListener {
     bCancel.setMargin(new Insets(i.top + 2, i.left, i.bottom + 2, i.right));
 
     JPanel pButtons = new JPanel(new GridBagLayout());
-//    c = ViewerUtil.setGBC(c, 0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.LINE_START,
-//            GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);
-//    pButtons.add(cbCloseOnExit, c);
     c = ViewerUtil.setGBC(c, 1, 0, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
             GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0);
     pButtons.add(new JPanel(), c);
