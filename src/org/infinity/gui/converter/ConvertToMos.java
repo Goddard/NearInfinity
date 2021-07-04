@@ -638,7 +638,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
       File[] filePaths = getImageFileName();
       if (filePaths != null) {
-        for(File fileSelected : filePaths) {
+        for (File fileSelected : filePaths) {
           System.out.println(fileSelected.getName());
           inputTableModel.addRow(new Object[] { fileSelected.getAbsolutePath()});
 
@@ -1018,7 +1018,7 @@ class TaskPropertyChange implements PropertyChangeListener {
     if (ret == JFileChooser.APPROVE_OPTION) {
       File[] filePaths = fc.getSelectedFiles();
       for(File fileSelected : filePaths) {
-        System.out.println(fileSelected.getName());
+        Logger.getLogger(this.getClass().getName()).log(Level.INFO, "File Selected : " + fileSelected.getName());
       }
       return filePaths;
     } else {
