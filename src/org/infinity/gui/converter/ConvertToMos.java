@@ -661,11 +661,11 @@ class TaskPropertyChange implements PropertyChangeListener {
       bConvert.setEnabled(isReady());
     } else if (event.getSource() == bCompressionHelp) {
       final String helpMsg =
-              "\"DXT1\" provides the highest compression ratio. It supports only 1 bit alpha\n" +
-                      "(i.e. either no or full transparency) and is the preferred type for TIS or MOS resources.\n\n" +
-                      "\"DXT5\" provides an average compression ratio. It features interpolated\n" +
-                      "alpha transitions and is the preferred type for BAM resources.\n\n" +
-                      "\"Auto\" selects the most appropriate compression type based on the input data.";
+          "\"DXT1\" provides the highest compression ratio. It supports only 1 bit alpha\n" +
+          "(i.e. either no or full transparency) and is the preferred type for TIS or MOS resources.\n\n" +
+          "\"DXT5\" provides an average compression ratio. It features interpolated\n" +
+          "alpha transitions and is the preferred type for BAM resources.\n\n" +
+          "\"Auto\" selects the most appropriate compression type based on the input data.";
       JOptionPane.showMessageDialog(this, helpMsg, "About Compression Types", JOptionPane.INFORMATION_MESSAGE);
     }
   }
