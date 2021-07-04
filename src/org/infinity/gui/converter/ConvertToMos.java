@@ -80,7 +80,10 @@ public class ConvertToMos extends ChildFrame implements ActionListener, Property
   private JTabbedPane tabPane;
   private JTable tfInputTableV1;
   private JTable tfOutputTableV1;
-  private JTextField tfOutputV1, tfInputV2, tfOutputV2;
+  // location where output will be saved
+  private JTextField tfOutputV1;
+  private JTextField tfInputV2;
+  private JTextField tfOutputV2;
   private JButton bInputV1, bOutputV1, bInputV2, bOutputV2, bCompressionHelp;
   private JButton bConvert, bCancel;
   private JSpinner sPvrzIndex;
@@ -230,7 +233,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
   @Override
   public void propertyChange(PropertyChangeEvent event) {
-    if ("progress" == event.getPropertyName()) {
+    if ("progress".equals(event.getPropertyName())) {
       Integer progressIndex = (Integer) event.getNewValue();
       tfOutputTableV1.setValueAt(progressIndex +"%", fileCount, 1);
     }
@@ -722,7 +725,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     //output directory choice will defualt to source directory maybe?
     tfOutputV1 = new JTextField();
-    tfOutputV1.setText("D:\\bg-mos-convert");
+    tfOutputV1.setText("");
     tfOutputV1.addFocusListener(this);
 
     //input table settings
