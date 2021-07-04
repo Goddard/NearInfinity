@@ -14,7 +14,7 @@ public class ProgressCellRenderer extends JProgressBar implements TableCellRende
     /**
      * Creates a JProgressBar with the range 0,100.
      */
-    public ProgressCellRenderer(){
+    public ProgressCellRenderer() {
         super(0, 100);
         setValue(0);
         setString("0%");
@@ -34,10 +34,9 @@ public class ProgressCellRenderer extends JProgressBar implements TableCellRende
         int index = sValue.indexOf('%');
         if (index != -1) {
             int p = 0;
-            try{
+            try {
                 p = Integer.parseInt(sValue.substring(0, index));
-            }
-            catch(NumberFormatException e) {
+            } catch (NumberFormatException e) {
                 System.out.println("Number Format Exception");
             }
 
