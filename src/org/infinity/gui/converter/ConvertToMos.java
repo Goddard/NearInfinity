@@ -743,7 +743,6 @@ class TaskPropertyChange implements PropertyChangeListener {
     };
     tfInputTableV1.setModel(inputTableModel);
     tfInputTableV1.setPreferredScrollableViewportSize(new Dimension(500,200));
-//    tfInputTableV1.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
     spInputScroll = new JScrollPane(tfInputTableV1);
 
     //output table settings
@@ -755,7 +754,6 @@ class TaskPropertyChange implements PropertyChangeListener {
     TableColumn tfOutputTableProgressCol = tfOutputTableV1.getColumnModel().getColumn(1);
     tfOutputTableProgressCol.setCellRenderer(new ProgressCellRenderer());
     tfOutputTableV1.setPreferredScrollableViewportSize(new Dimension(500,200));
-//    tfOutputTableV1.setAutoResizeMode(JTable.AUTO_RESIZE_OFF);
     spOutputScroll = new JScrollPane(tfOutputTableV1);
 
     bInputV1 = new JButton("Select Input");
