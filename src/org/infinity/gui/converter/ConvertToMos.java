@@ -370,7 +370,7 @@ class TaskPropertyChange implements PropertyChangeListener {
                 if (palIndex != null) {
                   tileData[i] = (byte)(palIndex + 1);
                 } else {
-                  byte color = (byte)ColorConvert.nearestColorRGB(pixels[i], palette, true);
+                  byte color = (byte)ColorConvert.getNearestColor(pixels[i], palette, 0.0, null);
                   tileData[i] = (byte)(color + 1);
                   colorCache.put(pixels[i], color);
                 }
@@ -939,7 +939,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     // finalizing dialog initialization
     pack();
-    setMinimumSize(getPreferredSize());
+    setMinimumSize(new Dimension(250, 400)); //getPreferredSize()
     setLocationRelativeTo(getParent());
     setVisible(true);
   }
