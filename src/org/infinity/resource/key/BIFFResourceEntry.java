@@ -18,6 +18,7 @@ import org.infinity.gui.BrowserMenuBar;
 import org.infinity.resource.Profile;
 import org.infinity.resource.ResourceFactory;
 import org.infinity.resource.Writeable;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
@@ -85,17 +86,37 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
 // --------------------- End Interface Writeable ---------------------
 
   @Override
+  public int hashCode()
+  {
+    int hash = super.hashCode();
+    hash = 31 * hash + ((resourceName == null) ? 0 : resourceName.hashCode());
+    hash = 31 * hash + type;
+    hash = 31 * hash + ((extension == null) ? 0 : extension.hashCode());
+    hash = 31 * hash + Boolean.hashCode(hasOverride);
+    hash = 31 * hash + locator;
+    return hash;
+  }
+
+  @Override
   public boolean equals(Object o)
   {
     if (o == this) {
       return true;
-    } else if (o instanceof BIFFResourceEntry) {
-      BIFFResourceEntry other = (BIFFResourceEntry)o;
-      return (locator == other.locator) &&
-             (type == other.type) &&
-             resourceName.equalsIgnoreCase(other.resourceName);
     }
-    return false;
+
+    if (!(o instanceof BIFFResourceEntry)) {
+      return false;
+    }
+
+    BIFFResourceEntry other = (BIFFResourceEntry)o;
+    boolean retVal = (resourceName == null && other.resourceName == null) ||
+                     (resourceName != null && resourceName.equalsIgnoreCase(other.resourceName));
+    retVal &= (type == other.type);
+    retVal &= (extension == null && other.extension == null) ||
+              (extension != null && extension.equalsIgnoreCase(other.extension));
+    retVal &= (hasOverride == other.hasOverride);
+    retVal &= (locator == other.locator);
+    return retVal;
   }
 
   @Override
@@ -113,12 +134,12 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
   {
     List<Path> overrides = Profile.getOverrideFolders(false);
     Path file = FileManager.query(overrides, getResourceName());
-    if (file != null && Files.isRegularFile(file)) {
+    if (file != null && FileEx.create(file).isFile()) {
       Files.deleteIfExists(file);
     }
     file = FileManager.query(overrides, getResourceName());
     synchronized (this) {
-      hasOverride = (file != null && Files.isRegularFile(file));
+      hasOverride = (file != null && FileEx.create(file).isFile());
     }
   }
 
@@ -128,7 +149,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
     if (!ignoreOverride) {
       List<Path> overrides = Profile.getOverrideFolders(false);
       Path file = FileManager.query(overrides, getResourceName());
-      if (file != null && Files.isRegularFile(file)) {
+      if (file != null && FileEx.create(file).isFile()) {
         return file;
       }
     }
@@ -148,7 +169,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
       if (!ignoreOverride) {
         List<Path> overrides = Profile.getOverrideFolders(false);
         Path file = FileManager.query(overrides, getResourceName());
-        if (file != null && Files.isRegularFile(file)) {
+        if (file != null && FileEx.create(file).isFile()) {
           retVal = Files.size(file);
           return retVal;
         }
@@ -191,7 +212,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
     if (!ignoreOverride) {
       List<Path> overrides = Profile.getOverrideFolders(false);
       Path file = FileManager.query(overrides, getResourceName());
-      if (file != null && Files.isRegularFile(file)) {
+      if (file != null && FileEx.create(file).isFile()) {
         try (SeekableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.READ)) {
           ByteBuffer bb = StreamUtils.getByteBuffer((int)ch.size());
           if (ch.read(bb) < ch.size()) {
@@ -212,7 +233,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
     if (!ignoreOverride) {
       List<Path> overrides = Profile.getOverrideFolders(false);
       Path file = FileManager.query(overrides, getResourceName());
-      if (file != null && Files.isRegularFile(file)) {
+      if (file != null && FileEx.create(file).isFile()) {
         return StreamUtils.getInputStream(file);
       }
     }
@@ -226,7 +247,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
     if (!ignoreOverride) {
       List<Path> overrides = Profile.getOverrideFolders(false);
       Path file = FileManager.query(overrides, getResourceName());
-      if (file != null && Files.isRegularFile(file)) {
+      if (file != null && FileEx.create(file).isFile()) {
         return getLocalFileInfo(file);
       }
     }
@@ -277,7 +298,7 @@ public final class BIFFResourceEntry extends ResourceEntry implements Writeable
       List<Path> overrides = Profile.getOverrideFolders(false);
       Path file = FileManager.query(overrides, getResourceName());
       synchronized (this) {
-        hasOverride = (file != null && Files.isRegularFile(file));
+        hasOverride = (file != null && FileEx.create(file).isFile());
       }
     }
     return hasOverride;

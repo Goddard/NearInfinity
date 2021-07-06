@@ -24,7 +24,6 @@ import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
@@ -61,6 +60,7 @@ import org.infinity.resource.graphics.DxtEncoder;
 import org.infinity.util.BinPack2D;
 import org.infinity.util.DynamicArray;
 import org.infinity.util.IntegerHashMap;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
@@ -150,7 +150,7 @@ public class ConvertToTis extends ChildFrame
         progress.setMillisToPopup(0);
       }
 
-      IntegerHashMap<Byte> colorCache = new IntegerHashMap<Byte>(2048);   // caching RGBColor -> index
+      IntegerHashMap<Byte> colorCache = new IntegerHashMap<>(2048);   // caching RGBColor -> index
       for (int tileIdx = 0; tileIdx < tileCount; tileIdx++) {
         if (showProgress) {
           if (progress.isCanceled()) {
@@ -199,7 +199,7 @@ public class ConvertToTis extends ChildFrame
               if (palIndex != null) {
                 tileData[i] = (byte)(palIndex + 1);
               } else {
-                byte color = (byte)ColorConvert.nearestColorRGB(srcBlock[i], palette, true);
+                byte color = (byte)ColorConvert.getNearestColor(srcBlock[i], palette, 0.0, null);
                 tileData[i] = (byte)(color + 1);
                 colorCache.put(srcBlock[i], color);
               }
@@ -293,8 +293,8 @@ public class ConvertToTis extends ChildFrame
 
     // preparing variables
     ProgressMonitor progress = null;
-    List<BinPack2D> pageList = new ArrayList<BinPack2D>();
-    List<TileEntry> entryList = new ArrayList<TileEntry>(tileCount);
+    List<BinPack2D> pageList = new ArrayList<>();
+    List<TileEntry> entryList = new ArrayList<>(tileCount);
 
     byte[] dst = new byte[24 + tileCount*12];   // header + tiles
     int dstOfs = 0;   // current start offset for write operations
@@ -592,7 +592,7 @@ public class ConvertToTis extends ChildFrame
             file = FileManager.resolve(tfOutput.getText());
           }
           if (file != null) {
-            if (!Files.exists(file) ||
+            if (!FileEx.create(file).exists() ||
                 JOptionPane.YES_OPTION == JOptionPane.showConfirmDialog(this, msg, "Question",
                                                                         JOptionPane.YES_NO_OPTION,
                                                                         JOptionPane.QUESTION_MESSAGE)) {
@@ -650,7 +650,7 @@ public class ConvertToTis extends ChildFrame
       String fileName = tfOutput.getText();
       if (fileName.isEmpty() && !tfInput.getText().isEmpty()) {
         Path f = FileManager.resolve(tfInput.getText());
-        if (Files.isRegularFile(f)) {
+        if (FileEx.create(f).isFile()) {
           fileName = createValidTisName(tfInput.getText(), getTisVersion());
         }
       }
@@ -976,7 +976,7 @@ public class ConvertToTis extends ChildFrame
     boolean ret = false;
     if (!getInputFile().isEmpty()) {
       Path f = FileManager.resolve(getInputFile());
-      ret = Files.isRegularFile(f);
+      ret = FileEx.create(f).isFile();
     }
     return ret;
   }
@@ -1032,7 +1032,7 @@ public class ConvertToTis extends ChildFrame
     inFileName = inputFile;
     if (inFileName != null && !inFileName.isEmpty()) {
       Path f = FileManager.resolve(inFileName);
-      if (Files.isRegularFile(f)) {
+      if (FileEx.create(f).isFile()) {
         Dimension dimImage = ColorConvert.getImageDimension(f);
         if (dimImage.width >= 0 && (dimImage.width % 64) == 0 &&
             dimImage.height >= 0 && (dimImage.height % 64) == 0) {
@@ -1068,11 +1068,11 @@ public class ConvertToTis extends ChildFrame
   // Return value: First list element is used for success message, second element for error message.
   private List<String> convert()
   {
-    List<String> ret = new Vector<String>(2);
+    List<String> ret = new Vector<>(2);
 
     // validating input file
     Path inFile = FileManager.resolve(inFileName);
-    if (!Files.isRegularFile(inFile)) {
+    if (!FileEx.create(inFile).isFile()) {
       ret.add(null);
       ret.add(String.format("Input file \"%s\" does not exist.", inFileName));
       return ret;

@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.gam;
@@ -33,7 +33,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.Resource;
@@ -55,7 +55,7 @@ import org.infinity.util.Variables;
  * @see <a href="https://gibberlings3.github.io/iesdp/file_formats/ie_formats/gam_v1.1.htm">
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/gam_v1.1.htm</a>
  */
-public final class GamResource extends AbstractStruct implements Resource, HasAddRemovable, HasViewerTabs
+public final class GamResource extends AbstractStruct implements Resource, HasChildStructs, HasViewerTabs
 {
   // GAM-specific field labels
   public static final String GAM_GAME_TIME                        = "Game time (game seconds)";
@@ -121,7 +121,7 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
       "Normal windows", "Party AI disabled", "Larger text window", "Largest text window", null,
       "Fullscreen mode", "Left pane hidden", "Right pane hidden", "Unsupported"};
   public static final String[] s_configuration_iwd2 = {
-      "Normal windows", "Party AI disabled", null, null, null, "Fullscreen mode", null,
+      "Normal windows", "Party AI enabled", null, null, null, "Fullscreen mode", "Toolbar hidden",
       "Console hidden", "Automap notes hidden"};
   public static final String[] s_version_bg1 = {"Restrict XP to BG1 limit", "Restrict XP to TotSC limit"};
   public static final String[] s_familiar_owner = {
@@ -136,9 +136,8 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
     super(entry);
   }
 
-  //<editor-fold defaultstate="collapsed" desc="HasAddRemovable">
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     if (Profile.getEngine() == Profile.Engine.PST) {
       // TODO: missing CRE resource when adding PartyNPC structures
@@ -170,14 +169,6 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
     return entry;
   }
 
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-  //</editor-fold>
-
-  //<editor-fold defaultstate="collapsed" desc="HasViewerTabs">
   @Override
   public int getViewerTabCount()
   {
@@ -232,17 +223,13 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
   {
     return index == 0 || Profile.getEngine() == Profile.Engine.PST && index == 1;
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Writeable">
   @Override
   public void write(OutputStream os) throws IOException
   {
     super.writeFlatFields(os);
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="AbstractStruct">
   @Override
   protected void viewerInitialized(StructViewer viewer)
   {
@@ -290,9 +277,7 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
       hexViewer.dataModified();
     }
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Readable">
   @Override
   public int read(ByteBuffer buffer, int offset) throws Exception
   {
@@ -312,7 +297,7 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
       addField(new DecNumber(buffer, offset + 14 + (i * 2), 2, String.format(GAM_FORMATION_BUTTON_FMT, i+1)));
     }
     addField(new DecNumber(buffer, offset + 24, 4, GAM_PARTY_GOLD));
-    addField(new HashBitmap(buffer, offset + 28, 2, GAM_VIEW_PLAYER_AREA, PartyNPC.m_partyOrder));
+    addField(new HashBitmap(buffer, offset + 28, 2, GAM_VIEW_PLAYER_AREA, PartyNPC.m_partyOrder, true, true));
     addField(new Flag(buffer, offset + 30, 2, GAM_WEATHER, s_weather));
     SectionOffset offset_partynpc = new SectionOffset(buffer, offset + 32, GAM_OFFSET_PARTY_MEMBERS,
                                                       PartyNPC.class);
@@ -410,7 +395,7 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
       }
     }
     else if (Profile.getEngine() == Profile.Engine.IWD2) { // V2.2 (V1.1 & V2.0 in BIFF)
-      addField(new Unknown(buffer, offset + 84, 4));
+      addField(new DecNumber(buffer, offset + 84, 4, GAM_REPUTATION));
       addField(new ResourceRef(buffer, offset + 88, GAM_MASTER_AREA, "ARE"));
       addField(new Flag(buffer, offset + 96, 4, GAM_CONFIGURATION, s_configuration_iwd2));
       numIWD2 = new SectionCount(buffer, offset + 100, 4, GAM_NUM_UNKNOWN, UnknownSection3.class);
@@ -559,7 +544,6 @@ public final class GamResource extends AbstractStruct implements Resource, HasAd
 
     return offset;
   }
-  //</editor-fold>
 
   private void updateOffsets()
   {

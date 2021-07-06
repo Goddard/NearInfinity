@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.wed;
@@ -8,18 +8,18 @@ import java.nio.ByteBuffer;
 
 import org.infinity.datatype.Bitmap;
 import org.infinity.datatype.DecNumber;
-import org.infinity.datatype.HexNumber;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.RemovableDecNumber;
 import org.infinity.datatype.SectionCount;
 import org.infinity.datatype.SectionOffset;
 import org.infinity.datatype.TextString;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.StructEntry;
 import org.infinity.util.io.StreamUtils;
 
-public final class Door extends AbstractStruct implements AddRemovable, HasAddRemovable
+public final class Door extends AbstractStruct implements AddRemovable, HasChildStructs
 {
   // WED/Door-specific field labels
   public static final String WED_DOOR                         = "Door";
@@ -43,10 +43,8 @@ public final class Door extends AbstractStruct implements AddRemovable, HasAddRe
     super(superStruct, WED_DOOR + " " + number, buffer, offset);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new OpenPolygon(), new ClosedPolygon()};
   }
@@ -58,29 +56,16 @@ public final class Door extends AbstractStruct implements AddRemovable, HasAddRe
   }
 
   @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-//--------------------- Begin Interface AddRemovable ---------------------
-
-  @Override
   public boolean canRemove()
   {
     return true;
   }
 
-//--------------------- End Interface AddRemovable ---------------------
-
   @Override
   protected void setAddRemovableOffset(AddRemovable datatype)
   {
     if (datatype instanceof RemovableDecNumber) {
-      final int offset = ((HexNumber)getParent().getAttribute(WedResource.WED_OFFSET_DOOR_TILEMAP_LOOKUP)).getValue();
+      final int offset = ((IsNumeric)getParent().getAttribute(WedResource.WED_OFFSET_DOOR_TILEMAP_LOOKUP)).getValue();
       int index = getTilemapIndex().getValue();
       datatype.setOffset(offset + index * 2);
     }
@@ -155,7 +140,7 @@ public final class Door extends AbstractStruct implements AddRemovable, HasAddRe
     }
 
     if (getParent() != null) {
-      final HexNumber offsetTileCell = (HexNumber)getParent().getAttribute(WedResource.WED_OFFSET_DOOR_TILEMAP_LOOKUP);
+      final IsNumeric offsetTileCell = (IsNumeric)getParent().getAttribute(WedResource.WED_OFFSET_DOOR_TILEMAP_LOOKUP);
       for (int i = 0; i < countTileCell.getValue(); i++) {
         addField(new RemovableDecNumber(buffer, offsetTileCell.getValue() +
                                                 2 * (indexTileCell.getValue() + i), 2,

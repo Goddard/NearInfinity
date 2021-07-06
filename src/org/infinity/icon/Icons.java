@@ -33,6 +33,7 @@ public class Icons
   public static final String ICON_COLLAPSE_ALL_24     = "CollapseAll24.png";
   public static final String ICON_COLOR_16            = "Color16.gif";
   public static final String ICON_COPY_16             = "Copy16.gif";
+  public static final String ICON_CRE_VIEWER_24       = "CreViewer24.png";
   public static final String ICON_CUT_16              = "Cut16.gif";
   public static final String ICON_DELETE_16           = "Delete16.gif";
   public static final String ICON_DOWN_16             = "Down16.gif";
@@ -51,6 +52,8 @@ public class Icons
   public static final String ICON_HISTORY_16          = "History16.gif";
   public static final String ICON_IMPORT_16           = "Import16.gif";
   public static final String ICON_INFORMATION_16      = "Information16.png";
+  public static final String ICON_LAUNCH_24           = "LaunchRed24.png";
+  public static final String ICON_LAUNCH_PLUS_24      = "LaunchRedPlus24.png";
   public static final String ICON_MAGNIFY_16          = "Magnify16.png";
   public static final String ICON_MOVIE_16            = "Movie16.gif";
   public static final String ICON_NEW_16              = "New16.gif";
@@ -79,7 +82,7 @@ public class Icons
   public static final String ICON_YELLOW_CIRCLE_20    = "YellowCircle20.gif";
   public static final String ICON_ZOOM_16             = "Zoom16.gif";
 
-  private static final Map<URL, ImageIcon> ICONMAP = new HashMap<URL, ImageIcon>(100);
+  private static final Map<URL, ImageIcon> ICONMAP = new HashMap<>(100);
 
   /**
    * Returns an ImageIcon object of the specified graphics filename.

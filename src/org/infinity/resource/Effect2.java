@@ -61,6 +61,11 @@ public final class Effect2 extends AbstractStruct implements AddRemovable
   public static final String[] s_restype = {"None", "Spell", "Item"};
   public static final String[] s_dispel = {"Natural/Nonmagical", "Dispel/Not bypass resistance",
                                            "Not dispel/Bypass resistance", "Dispel/Bypass resistance"};
+  public static final String[] s_dispel_ee = {"Natural/Nonmagical", "Dispel", "Bypass resistance",
+                                              "Bypass deflection/reflection/trap", null, null, null, null, null,
+                                              null, null, null, null, null, null, null, null,
+                                              null, null, null, null, null, null, null, null,
+                                              null, null, null, null, null, null, null, "Effect applied by item"};
 //  public static final String[] s_dispel_v1 = {"None", "Dispellable", "Bypass resistance"};
 //  public static final String[] s_dispel_v2 = {"None", "Dispellable", "Bypass resistance",
 //                                              "Bypass turn/reflect/absorb"};
@@ -75,8 +80,11 @@ public final class Effect2 extends AbstractStruct implements AddRemovable
     }
     list.add(new DecNumber(buffer, offset + 8, 4, EFFECT_MIN_LEVEL));
     list.add(new DecNumber(buffer, offset + 12, 4, EFFECT_MAX_LEVEL));
-//    list.add(new Flag(buffer, offset + 16, 4, EFFECT_DISPEL_TYPE, s_dispel));
-    list.add(new Bitmap(buffer, offset + 16, 4, EFFECT_DISPEL_TYPE, s_dispel));
+    if (Profile.isEnhancedEdition()) {
+      list.add(new Flag(buffer, offset + 16, 4, EFFECT_DISPEL_TYPE, s_dispel_ee));
+    } else {
+      list.add(new Bitmap(buffer, offset + 16, 4, EFFECT_DISPEL_TYPE, s_dispel));
+    }
     list.add(new DecNumber(buffer, offset + 20, 4, EFFECT_PARAMETER_3));
     list.add(new DecNumber(buffer, offset + 24, 4, EFFECT_PARAMETER_4));
     list.add(new DecNumber(buffer, offset + 28, 4, EFFECT_PARAMETER_5));
@@ -105,8 +113,8 @@ public final class Effect2 extends AbstractStruct implements AddRemovable
     } else {
       list.add(new DecNumber(buffer, offset + 84, 4, EFFECT_IMPACT_PROJECTILE));
     }
-    IdsBitmap slot_type = new IdsBitmap(buffer, offset + 88, 4, EFFECT_SOURCE_ITEM_SLOT, "SLOTS.IDS");
-    slot_type.addIdsMapEntry(new IdsMapEntry(4294967295L, "NONE"));
+    IdsBitmap slot_type = new IdsBitmap(buffer, offset + 88, 4, EFFECT_SOURCE_ITEM_SLOT, "SLOTS.IDS", true, false, true);
+    slot_type.addIdsMapEntry(new IdsMapEntry(-1L, "NONE"));
     list.add(slot_type);
     list.add(new TextString(buffer, offset + 92, 32, EFFECT_VARIABLE_NAME));
     list.add(new DecNumber(buffer, offset + 124, 4, EFFECT_CASTER_LEVEL));
@@ -200,7 +208,7 @@ public final class Effect2 extends AbstractStruct implements AddRemovable
       retVal.setOffset(offset);
       ((AbstractStruct)retVal).realignStructOffsets();
     } else {
-      retVal = (StructEntry)clone();
+      retVal = clone();
     }
 
     return retVal;

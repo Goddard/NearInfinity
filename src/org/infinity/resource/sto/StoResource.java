@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2018 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.sto;
@@ -15,6 +15,7 @@ import javax.swing.JScrollPane;
 import org.infinity.datatype.Bitmap;
 import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.Flag;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.ResourceRef;
 import org.infinity.datatype.SectionCount;
 import org.infinity.datatype.SectionOffset;
@@ -27,7 +28,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.Resource;
@@ -44,7 +45,7 @@ import org.infinity.util.io.StreamUtils;
  * @see <a href="https://gibberlings3.github.io/iesdp/file_formats/ie_formats/sto_v1.htm">
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/sto_v1.htm</a>
  */
-public final class StoResource extends AbstractStruct implements Resource, HasAddRemovable, HasViewerTabs
+public final class StoResource extends AbstractStruct implements Resource, HasChildStructs, HasViewerTabs
 {
   // STO-specific field labels
   public static final String STO_TYPE                   = "Type";
@@ -79,11 +80,11 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
 //  private static final String[] s_flag = {"Can't do anything", "Can buy", "Can sell", "Can identify",
 //                                          "Can steal", "Can buy cures", "Can donate",
 //                                          "Can buy drinks", "", "", "Quality Bit 0 (BAM)", "Quality Bit 1 (BAM)"};
-  public static final String[] s_flag_bg2 = {"Can only rest", "Can buy", "Can sell", "Can identify",
-                                              "Can steal", "Can donate;Unused in Enhanced Editions", "Can buy cures",
-                                              "Can buy drinks", null, "EE: Disable donation screen;Disables donation screen in temple stores",
-                                              "Tavern quality 1", "Tavern quality 2", null, "Fence", "EE: Ignore reputation",
-                                              "Ex: Toggle recharge", "EE: Can sell critical"};
+  public static final String[] s_flag_bg2 = {"User can only rest", "User can buy", "User can sell", "User can identify",
+                                              "User can steal", "User can donate;Unused in Enhanced Editions", "User can purchase cures",
+                                              "User can purchase drinks", null, "EE: Disable donation screen;Disables donation screen in temple stores",
+                                              "Tavern quality 1", "Tavern quality 2", null, "User can sell stolen goods", "EE: Ignore reputation",
+                                              "Ex: Toggle item recharge", "EE: User can sell critical items"};
   public static final String[] s_rooms = {"No rooms available", "Peasant", "Merchant", "Noble", "Royal"};
 
   private StructHexViewer hexViewer;
@@ -99,10 +100,8 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
     super(entry);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     TextString version = (TextString)getAttribute(COMMON_VERSION);
     if (version.toString().equals("V1.1"))
@@ -116,17 +115,6 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
   {
     return entry;
   }
-
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-// --------------------- Begin Interface HasViewerTabs ---------------------
 
   @Override
   public int getViewerTabCount()
@@ -172,8 +160,6 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
   {
     return (index == 0);
   }
-
-// --------------------- End Interface HasViewerTabs ---------------------
 
   @Override
   public int read(ByteBuffer buffer, int offset) throws Exception
@@ -356,8 +342,8 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
         Object o;
 
         // preparations
-        DecNumber ofs = (DecNumber)sto.getAttribute(STO_OFFSET_ITEMS_FOR_SALE, false);
-        DecNumber cnt = (DecNumber)sto.getAttribute(STO_NUM_ITEMS_FOR_SALE, false);
+        IsNumeric ofs = (IsNumeric)sto.getAttribute(STO_OFFSET_ITEMS_FOR_SALE, false);
+        IsNumeric cnt = (IsNumeric)sto.getAttribute(STO_NUM_ITEMS_FOR_SALE, false);
         if (ofs != null && ofs.getValue() > 0 && cnt != null && cnt.getValue() > 0) {
           String itemLabel = SearchOptions.getResourceName(SearchOptions.STO_Item_Item1);
           items = new ResourceRef[cnt.getValue()];
@@ -383,8 +369,8 @@ public final class StoResource extends AbstractStruct implements Resource, HasAd
           items = new ResourceRef[0];
         }
 
-        ofs = (DecNumber)sto.getAttribute(STO_OFFSET_ITEMS_PURCHASED, false);
-        cnt = (DecNumber)sto.getAttribute(STO_NUM_ITEMS_PURCHASED, false);
+        ofs = (IsNumeric)sto.getAttribute(STO_OFFSET_ITEMS_PURCHASED, false);
+        cnt = (IsNumeric)sto.getAttribute(STO_NUM_ITEMS_PURCHASED, false);
         if (ofs != null && ofs.getValue() > 0 && cnt != null && cnt.getValue() > 0) {
           purchases = new Bitmap[cnt.getValue()];
           for (int i = 0; i < cnt.getValue(); i++) {

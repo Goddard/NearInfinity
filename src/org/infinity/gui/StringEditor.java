@@ -14,7 +14,6 @@ import java.awt.event.ActionListener;
 import java.awt.event.ItemEvent;
 import java.awt.event.ItemListener;
 import java.io.File;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayDeque;
 import java.util.Locale;
@@ -48,9 +47,8 @@ import javax.swing.event.TableModelListener;
 import javax.swing.filechooser.FileNameExtensionFilter;
 
 import org.infinity.NearInfinity;
-import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.Editable;
-import org.infinity.datatype.Flag;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.ResourceRef;
 import org.infinity.icon.Icons;
 import org.infinity.resource.Profile;
@@ -59,6 +57,7 @@ import org.infinity.search.SearchMaster;
 import org.infinity.search.StringReferenceSearcher;
 import org.infinity.util.Misc;
 import org.infinity.util.StringTable;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 
 public class StringEditor extends ChildFrame implements SearchClient
@@ -615,14 +614,14 @@ public class StringEditor extends ChildFrame implements SearchClient
     if (cellName != null && cellValue != null && entry != null) {
       String name = cellName.toString();
       if (StringEditor.TLK_FLAGS.equals(name)) {
-        entry.setFlags((short)((Flag)cellValue).getValue());
+        entry.setFlags((short)((IsNumeric)cellValue).getValue());
       } else if (StringEditor.TLK_SOUND.equals(name)) {
         ResourceRef ref = (ResourceRef)cellValue;
         entry.setSoundRef(ref.isEmpty() ? "" : ref.getText());
       } else if (StringEditor.TLK_VOLUME.equals(name)) {
-        entry.setVolume(((DecNumber)cellValue).getValue());
+        entry.setVolume(((IsNumeric)cellValue).getValue());
       } else if (StringEditor.TLK_PITCH.equals(name)) {
-        entry.setPitch(((DecNumber)cellValue).getValue());
+        entry.setPitch(((IsNumeric)cellValue).getValue());
       }
       updateModifiedUI(getSelectedDialogType());
     }
@@ -732,7 +731,7 @@ public class StringEditor extends ChildFrame implements SearchClient
           int ret = fc.showSaveDialog(this);
           if (ret == JFileChooser.APPROVE_OPTION) {
             outPath = fc.getSelectedFile().toPath();
-            if (!Files.isDirectory(outPath)) {
+            if (!FileEx.create(outPath).isDirectory()) {
               outPath = outPath.getParent();
             }
             outFile = outPath.resolve(StringTable.getPath(StringTable.Type.MALE).getFileName().toString());

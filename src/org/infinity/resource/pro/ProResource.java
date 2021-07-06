@@ -5,6 +5,7 @@
 package org.infinity.resource.pro;
 
 import java.nio.ByteBuffer;
+import java.util.TreeMap;
 
 import javax.swing.JComponent;
 
@@ -14,6 +15,7 @@ import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.Flag;
 import org.infinity.datatype.HashBitmap;
 import org.infinity.datatype.IdsTargetType;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.ProRef;
 import org.infinity.datatype.ResourceBitmap;
 import org.infinity.datatype.ResourceRef;
@@ -28,7 +30,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.Resource;
@@ -36,7 +38,6 @@ import org.infinity.resource.ResourceFactory;
 import org.infinity.resource.StructEntry;
 import org.infinity.resource.key.ResourceEntry;
 import org.infinity.search.SearchOptions;
-import org.infinity.util.LongIntegerHashMap;
 
 /**
  * This resource describes projectiles, and the files are referenced spells and
@@ -51,7 +52,7 @@ import org.infinity.util.LongIntegerHashMap;
  * @see <a href="https://gibberlings3.github.io/iesdp/file_formats/ie_formats/pro_v1.htm">
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/pro_v1.htm</a>
  */
-public final class ProResource extends AbstractStruct implements Resource, HasAddRemovable, HasViewerTabs, UpdateListener
+public final class ProResource extends AbstractStruct implements Resource, HasViewerTabs, UpdateListener
 {
   // PRO-specific field labels
   public static final String PRO_TYPE = "Projectile type";
@@ -93,10 +94,10 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
     "Tinted trail puff VEF", "Multiple proj.", "Default spell on missed", "Falling path", "Comet",
     "Lined up AoE", "Rectangular AoE", "Draw behind target", "Casting glow fx", "Travel door",
     "Stop/fade after hit", "Display string", "Random path", "Start random seq.", "Color pulse on hit",
-    "Touch projectile", "Neg. IDS1", "Neg. IDS2", "Use either IDS", "Delayed payload",
+    "Touch projectile", "Negate IDS1", "Negate IDS2", "Use either IDS", "Delayed payload",
     "Limited path count", "IWD style check", "Caster affected"};
 
-  public static final LongIntegerHashMap<String> m_projtype = new LongIntegerHashMap<String>();
+  public static final TreeMap<Long, String> m_projtype = new TreeMap<>();
   static {
     m_projtype.put(1L, "No BAM");
     m_projtype.put(2L, "Single target");
@@ -131,27 +132,6 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
     super(entry);
   }
 
-  //<editor-fold defaultstate="collapsed" desc="HasAddRemovable">
-  @Override
-  public AddRemovable[] getAddRemovables() throws Exception
-  {
-    return null;
-  }
-
-  @Override
-  public AddRemovable confirmAddEntry(AddRemovable entry) throws Exception
-  {
-    return entry;
-  }
-
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-  //</editor-fold>
-
-  //<editor-fold defaultstate="collapsed" desc="UpdateListener">
   @Override
   public boolean valueUpdated(UpdateEvent event)
   {
@@ -169,12 +149,12 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
       }
       return bRet;
     }
-    else if (event.getSource() instanceof HashBitmap &&
+    else if (event.getSource() instanceof IsNumeric &&
              ((StructEntry)event.getSource()).getName().equals(PRO_TYPE)) {
-      HashBitmap proType = (HashBitmap)event.getSource();
+      IsNumeric proType = (IsNumeric)event.getSource();
       AbstractStruct struct = event.getStructure();
       // add/remove extended sections in the parent structure depending on the current value
-      if (struct instanceof Resource && struct instanceof HasAddRemovable) {
+      if (struct instanceof Resource && struct instanceof HasChildStructs) {
         if (proType.getValue() == 3L) {         // area of effect
           StructEntry entry = struct.getFields().get(struct.getFields().size() - 1);
           try {
@@ -217,9 +197,7 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
     }
     return false;
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="HasViewerTabs">
   @Override
   public int getViewerTabCount()
   {
@@ -249,9 +227,7 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
   {
     return false;
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Readable">
   @Override
   public int read(ByteBuffer buffer, int offset) throws Exception
   {
@@ -325,9 +301,7 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
 
     return offset;
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="AbstractStruct">
   @Override
   protected void viewerInitialized(StructViewer viewer)
   {
@@ -367,7 +341,6 @@ public final class ProResource extends AbstractStruct implements Resource, HasAd
       hexViewer.dataModified();
     }
   }
-  //</editor-fold>
 
   /** Updates current IDS targeting to IWD style and returns true if changes have been made. */
   private boolean setIwdStyleIdsType(AbstractStruct struct, int offset, int nr)

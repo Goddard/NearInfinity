@@ -34,7 +34,6 @@ import org.infinity.datatype.Unknown;
 import org.infinity.gui.BrowserMenuBar;
 import org.infinity.gui.StructViewer;
 import org.infinity.resource.are.Actor;
-import org.infinity.resource.cre.CreResource;
 import org.infinity.resource.dlg.AbstractCode;
 import org.infinity.resource.itm.ItmResource;
 import org.infinity.resource.key.ResourceEntry;
@@ -52,6 +51,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
   public static final String COMMON_UNKNOWN       = "Unknown";
   public static final String COMMON_UNUSED        = "Unused";
   public static final String COMMON_UNUSED_BYTES  = "Unused bytes?";
+  public static final String SUFFIX_UNUSED        = " (unused)";
 
   // Commonly used string arrays
   public static final String[] OPTION_NOYES       = {"No", "Yes"};
@@ -121,7 +121,6 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
 
   private static void adjustSectionOffsets(AbstractStruct superStruct, AddRemovable datatype, int amount)
   {
-    boolean sectionMatch = false;
     for (final StructEntry e : superStruct.fields) {
       if (e instanceof SectionOffset) {
         final SectionOffset so = (SectionOffset)e;
@@ -129,12 +128,16 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
           so.incValue(amount);
         }
         else if (so.getValue() + superStruct.getExtraOffset() == datatype.getOffset()) {
-          sectionMatch |= so.getSection().equals(datatype.getClass());
-          if (amount > 0 &&
-              !(so.getSection().equals(datatype.getClass()) ||
-                  (Profile.getEngine() == Profile.Engine.IWD2 && superStruct instanceof CreResource) ||
-                  ((superStruct instanceof ItmResource || superStruct instanceof SplResource) && !sectionMatch))) {
-            so.incValue(amount);
+          if (amount > 0) {
+            if (superStruct instanceof ItmResource || superStruct instanceof SplResource) {
+              // ensure that effect structures are added after ability structures
+              if (datatype instanceof AbstractAbility && so.getSection().equals(Effect.class)) {
+                so.incValue(amount);
+              }
+            }
+            else if (!so.getSection().equals(datatype.getClass())) {
+              so.incValue(amount);
+            }
           }
         }
       }
@@ -155,7 +158,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
     name = entry.getResourceName();
     ByteBuffer bb = entry.getResourceBuffer();
     endoffset = read(bb, 0);
-    if (this instanceof HasAddRemovable && !fields.isEmpty()) {// Is this enough?
+    if (this instanceof HasChildStructs && !fields.isEmpty()) {// Is this enough?
       Collections.sort(fields); // This way we can writeField out in the order in list - sorted by offset
       fixHoles((ByteBuffer)bb.position(0));
       initAddStructMaps();
@@ -182,7 +185,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
   {
     this(superStruct, name, startoffset, listSize);
     endoffset = read(buffer, startoffset);
-    if (this instanceof HasAddRemovable) {
+    if (this instanceof HasChildStructs) {
       if (!(this instanceof Actor)) {  // Is this enough?
         Collections.sort(fields); // This way we can writeField out in the order in list - sorted by offset
       }
@@ -190,7 +193,6 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
     }
   }
 
-  //<editor-fold defaultstate="collapsed" desc="Closeable">
   @Override
   public void close() throws Exception
   {
@@ -201,9 +203,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
       viewer.close();
     }
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Referenceable">
   @Override
   public boolean isReferenceable()
   {
@@ -215,17 +215,13 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
   {
     new ReferenceSearcher(getResourceEntry(), parent);
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Comparable">
   @Override
   public int compareTo(StructEntry o)
   {
     return getOffset() - o.getOffset();
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="StructEntry">
   @Override
   public AbstractStruct clone() throws CloneNotSupportedException
   {
@@ -337,9 +333,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
       addPropertyChangeListener(parent);
     }
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="TableModel">
   @Override
   public int getRowCount()
   {
@@ -429,9 +423,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
       }
     }
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Viewable">
   @Override
   public JComponent makeViewer(ViewableContainer container)
   {
@@ -441,9 +433,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
     }
     return viewer;
   }
-  //</editor-fold>
 
-  //<editor-fold defaultstate="collapsed" desc="Writable">
   @Override
   public void write(OutputStream os) throws IOException
   {
@@ -452,7 +442,6 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
       e.write(os);
     }
   }
-  //</editor-fold>
 
   @Override
   public String toString()
@@ -479,6 +468,35 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
       }
     }
     return sb.toString();
+  }
+
+  @Override
+  public int hashCode()
+  {
+    int hash = 7;
+    hash = 31 * hash + ((fields == null) ? 0 : fields.hashCode());
+    hash = 31 * hash + Integer.hashCode(startoffset);
+    hash = 31 * hash + Integer.hashCode(endoffset);
+    hash = 31 * hash + Integer.hashCode(extraoffset);
+    return hash;
+  }
+
+  @Override
+  public boolean equals(Object o)
+  {
+    if (o == this) {
+      return true;
+    }
+    if (!(o instanceof AbstractStruct)) {
+      return false;
+    }
+    AbstractStruct other = (AbstractStruct)o;
+    boolean retVal = (fields == null && other.fields == null) ||
+                     (fields != null && fields.equals(other.fields));
+    retVal &= (startoffset == other.startoffset);
+    retVal &= (endoffset == other.endoffset);
+    retVal &= (extraoffset == other.extraoffset);
+    return retVal;
   }
 
   /** Returns the table row index where the specified AddRemovable structure can be inserted. */
@@ -912,7 +930,7 @@ public abstract class AbstractStruct extends AbstractTableModel implements Struc
 
   public void removeDatatype(AddRemovable removedEntry, boolean removeRecurse)
   {
-    if (removeRecurse && removedEntry instanceof HasAddRemovable) { // Recusivly removeTableLine substructures first
+    if (removeRecurse && removedEntry instanceof HasChildStructs) { // Recusivly removeTableLine substructures first
       AbstractStruct removedStruct = (AbstractStruct)removedEntry;
       for (int i = 0; i < removedStruct.fields.size(); i++) {
         final StructEntry o = removedStruct.fields.get(i);

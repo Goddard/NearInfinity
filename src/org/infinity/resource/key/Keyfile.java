@@ -27,6 +27,7 @@ import org.infinity.icon.Icons;
 import org.infinity.resource.ResourceFactory;
 import org.infinity.util.IntegerHashMap;
 import org.infinity.util.Misc;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.StreamUtils;
 
 public class Keyfile
@@ -112,7 +113,7 @@ public class Keyfile
     if (keyFile == null) {
       throw new NullPointerException("No keyfile specified");
     }
-    if (!Files.isRegularFile(keyFile)) {
+    if (!FileEx.create(keyFile).isFile()) {
       throw new FileNotFoundException("Keyfile " + keyFile + " not found or is not regular file");
     }
 
@@ -222,6 +223,19 @@ public class Keyfile
   }
 
   @Override
+  public int hashCode()
+  {
+    int hash = 7;
+    hash = 31 * hash + ((keyFile == null) ? 0 : keyFile.hashCode());
+    hash = 31 * hash + ((keyList == null) ? 0 : keyList.hashCode());
+    hash = 31 * hash + ((extMap == null) ? 0 : extMap.hashCode());
+    hash = 31 * hash + ((resourceIcons == null) ? 0 : resourceIcons.hashCode());
+    hash = 31 * hash + ((biffEntries == null) ? 0 : biffEntries.hashCode());
+    hash = 31 * hash + ((resourceEntries == null) ? 0 : resourceEntries.hashCode());
+    return hash;
+  }
+
+  @Override
   public boolean equals(Object o)
   {
     if (o == this) {
@@ -256,7 +270,7 @@ public class Keyfile
    * Overrides current key file mapping with data from the specified key file.
    * @param keyFile The key file containing new entries.
    */
-  public void addKeyfile(Path keyFile) throws IOException
+  public void addKeyfile(Path keyFile)
   {
     if (keyFile == null) {
       throw new NullPointerException("No DLC keyfile specified");
@@ -461,7 +475,7 @@ public class Keyfile
           biffList.forEach((entry) -> {
             if (entry != null) {
               Path biffPath = entry.getPath();
-              if (biffPath != null && Files.isRegularFile(biffPath)) {
+              if (biffPath != null && FileEx.create(biffPath).isFile()) {
                 try {
                   AbstractBIFFReader.open(biffPath);
                 } catch (Exception e) {
@@ -481,7 +495,7 @@ public class Keyfile
 //    if (keyFile == null) {
 //      throw new NullPointerException();
 //    }
-//    if (!Files.isRegularFile(keyFile)) {
+//    if (!FileEx.fromPath(keyFile).isFile()) {
 //      throw new IOException("Key file not found: " + keyFile);
 //    }
 //
@@ -515,11 +529,11 @@ public class Keyfile
     if (getKeyfile() == null) {
       throw new NullPointerException();
     }
-    if (!Files.isRegularFile(getKeyfile())) {
+    if (!FileEx.create(getKeyfile()).isFile()) {
       throw new IOException("Key file not found: " + getKeyfile());
     }
     for (final Path file: keyList) {
-      if (file != null && !Files.isRegularFile(file)) {
+      if (file != null && !FileEx.create(file).isFile()) {
         throw new IOException("Key file not found: " + file);
       }
     }

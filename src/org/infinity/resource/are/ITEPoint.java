@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.are;
@@ -9,20 +9,20 @@ import java.nio.ByteBuffer;
 import org.infinity.datatype.Bitmap;
 import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.Flag;
-import org.infinity.datatype.HexNumber;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.ResourceRef;
 import org.infinity.datatype.StringRef;
 import org.infinity.datatype.TextString;
 import org.infinity.datatype.Unknown;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.StructEntry;
 import org.infinity.resource.vertex.Vertex;
 import org.infinity.util.io.StreamUtils;
 
-public final class ITEPoint extends AbstractStruct implements AddRemovable, HasVertices, HasAddRemovable
+public final class ITEPoint extends AbstractStruct implements AddRemovable, HasVertices, HasChildStructs
 {
   // ARE/Trigger-specific field labels
   public static final String ARE_TRIGGER                            = "Trigger";
@@ -76,10 +76,8 @@ public final class ITEPoint extends AbstractStruct implements AddRemovable, HasV
     super(superStruct, ARE_TRIGGER + " " + number, buffer, offset);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new Vertex()};
   }
@@ -91,32 +89,16 @@ public final class ITEPoint extends AbstractStruct implements AddRemovable, HasV
   }
 
   @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-//--------------------- Begin Interface AddRemovable ---------------------
-
-  @Override
   public boolean canRemove()
   {
     return true;
   }
 
-//--------------------- End Interface AddRemovable ---------------------
-
-
-// --------------------- Begin Interface HasVertices ---------------------
-
   @Override
   public void readVertices(ByteBuffer buffer, int offset) throws Exception
   {
-    int firstVertex = ((DecNumber)getAttribute(ARE_TRIGGER_FIRST_VERTEX_INDEX)).getValue();
-    int numVertices = ((DecNumber)getAttribute(ARE_TRIGGER_NUM_VERTICES)).getValue();
+    int firstVertex = ((IsNumeric)getAttribute(ARE_TRIGGER_FIRST_VERTEX_INDEX)).getValue();
+    int numVertices = ((IsNumeric)getAttribute(ARE_TRIGGER_NUM_VERTICES)).getValue();
     offset += firstVertex << 2;
     for (int i = 0; i < numVertices; i++) {
       addField(new Vertex(this, buffer, offset + 4 * i, i));
@@ -140,15 +122,13 @@ public final class ITEPoint extends AbstractStruct implements AddRemovable, HasV
     return count;
   }
 
-// --------------------- End Interface HasVertices ---------------------
-
   @Override
   protected void setAddRemovableOffset(AddRemovable datatype)
   {
     if (datatype instanceof Vertex) {
-      int index = ((DecNumber)getAttribute(ARE_TRIGGER_FIRST_VERTEX_INDEX)).getValue();
-      index += ((DecNumber)getAttribute(ARE_TRIGGER_NUM_VERTICES)).getValue();
-      final int offset = ((HexNumber)getParent().getAttribute(AreResource.ARE_OFFSET_VERTICES)).getValue();
+      int index = ((IsNumeric)getAttribute(ARE_TRIGGER_FIRST_VERTEX_INDEX)).getValue();
+      index += ((IsNumeric)getAttribute(ARE_TRIGGER_NUM_VERTICES)).getValue();
+      final int offset = ((IsNumeric)getParent().getAttribute(AreResource.ARE_OFFSET_VERTICES)).getValue();
       datatype.setOffset(offset + 4 * index);
       ((AbstractStruct)datatype).realignStructOffsets();
     }

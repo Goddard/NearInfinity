@@ -18,6 +18,7 @@ import java.util.List;
 import java.util.Locale;
 import java.util.stream.Stream;
 
+import org.infinity.resource.Profile;
 import org.infinity.util.io.FileWatcher.FileWatchEvent;
 import org.infinity.util.io.FileWatcher.FileWatchListener;
 
@@ -430,7 +431,7 @@ public class FileManager implements FileWatchListener
             }
           } else {
             curPath = _resolve(curRoot.resolve(relPath));
-            if (curPath != null && Files.exists(curPath)) {
+            if (curPath != null && FileEx.create(curPath).exists()) {
               exists = true;
               break;
             }
@@ -460,7 +461,7 @@ public class FileManager implements FileWatchListener
   public void fileChanged(FileWatchEvent e)
   {
     if (e.getKind() == StandardWatchEventKinds.ENTRY_CREATE) {
-      if (Files.isDirectory(e.getPath())) {
+      if (FileEx.create(e.getPath()).isDirectory()) {
         // load whole directory into cache
         _cacheDirectory(e.getPath(), true);
       } else {
@@ -484,7 +485,7 @@ public class FileManager implements FileWatchListener
   private static Path _resolve(Path path)
   {
     Path retVal = path;
-    if (path != null && isFileSystemCaseSensitive(path.getFileSystem())) {
+    if (path != null && isFileSystemCaseSensitive(path.getFileSystem()) && !FileEx.create(path).exists()) {
       boolean found = false;
       Path curPath = path.normalize().toAbsolutePath();
       Path dir = curPath.getRoot();
@@ -562,11 +563,20 @@ public class FileManager implements FileWatchListener
       if (list == null) {
         list = _cacheDirectory(folder, false);
       }
-      if (list == null || !list.contains(retVal)) {
+      if (list == null) {
         retVal = null;
+      } else {
+        final String pathString = path.getFileName().toString();
+        final boolean isCase = isFileSystemCaseSensitive(path.getFileSystem());
+        boolean match = list
+            .parallelStream()
+            .anyMatch(p -> isCase ? pathString.equals(p.getFileName().toString()) : pathString.equalsIgnoreCase(p.getFileName().toString()));
+        if (!match) {
+          retVal = null;
+        }
       }
     }
-//    if (retVal != null && !Files.exists(retVal)) {
+//    if (retVal != null && !FileEx.fromPath(retVal).exists()) {
 //      retVal = null;
 //    }
     return retVal;
@@ -575,7 +585,7 @@ public class FileManager implements FileWatchListener
   private static HashSet<Path> _cacheDirectory(Path path, boolean force)
   {
     HashSet<Path> retVal = null;
-    if (path != null && Files.isDirectory(path)) {
+    if (path != null && FileEx.create(path).isDirectory()) {
       if (force) {
         pathCache.remove(path);
       }
@@ -600,20 +610,26 @@ public class FileManager implements FileWatchListener
     if (fs != null) {
       retVal = getInstance().mapCaseSensitive.get(fs);
       if (retVal == null) {
-        final char[] separators = { '/', '\\', ':' };
-        final String name = "/tmp/aaaBBB";
-        for (final char sep: separators) {
-          String s = (sep != '/') ? name.replace('/', sep) : name;
-          try {
-            Path path = fs.getPath(s);
-            Path path2 = path.getParent().resolve(path.getFileName().toString().toUpperCase(Locale.ENGLISH));
-            Path path3 = path.getParent().resolve(path.getFileName().toString().toLowerCase(Locale.ENGLISH));
-            retVal = Boolean.valueOf(!(path.equals(path2) && path.equals(path3)));
-            getInstance().mapCaseSensitive.put(fs, retVal);
-            break;
-          } catch (Throwable t) {
-            retVal = Boolean.TRUE;
+        if (Profile.<Boolean>getProperty(Profile.Key.GET_GLOBAL_FILE_CASE_CHECK)) {
+          final char[] separators = { '/', '\\', ':' };
+          final String name = "/tmp/aaaBBB";
+          for (final char sep: separators) {
+            String s = (sep != '/') ? name.replace('/', sep) : name;
+            try {
+              Path path = fs.getPath(s);
+              Path path2 = path.getParent().resolve(path.getFileName().toString().toUpperCase(Locale.ENGLISH));
+              Path path3 = path.getParent().resolve(path.getFileName().toString().toLowerCase(Locale.ENGLISH));
+              retVal = Boolean.valueOf(!(path.equals(path2) && path.equals(path3)));
+              getInstance().mapCaseSensitive.put(fs, retVal);
+              break;
+            } catch (Throwable t) {
+              retVal = Boolean.TRUE;
+            }
           }
+        } else {
+          // forced
+          retVal = Boolean.valueOf(false);
+          getInstance().mapCaseSensitive.put(fs, retVal);
         }
       }
     }

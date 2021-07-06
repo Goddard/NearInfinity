@@ -76,7 +76,7 @@ public class DlcManager
     this.fileSystems = new HashMap<>();
   }
 
-  private FileSystem _register(Path dlcFile) throws IOException
+  private FileSystem _register(Path dlcFile)
   {
     FileSystem fs = _getDlc(dlcFile);
     if (fs == null) {
@@ -90,7 +90,7 @@ public class DlcManager
 
   private FileSystem _getDlc(Path dlcFile)
   {
-    if (dlcFile != null && Files.isRegularFile(dlcFile)) {
+    if (dlcFile != null && FileEx.create(dlcFile).isFile()) {
       return fileSystems.get(dlcFile);
     }
     return null;
@@ -107,7 +107,7 @@ public class DlcManager
       if (fs != null) {
         for (final String keyFile: KEY_FILES) {
           Path key = fs.getPath(keyFile);
-          if (key != null && Files.isRegularFile(key)) {
+          if (key != null && FileEx.create(key).isFile()) {
             try (InputStream is = StreamUtils.getInputStream(key)) {
               String sig = StreamUtils.readString(is, 8);
               if ("KEY V1  ".equals(sig)) {
@@ -124,9 +124,9 @@ public class DlcManager
     return null;
   }
 
-  private FileSystem _validateDlc(Path dlcFile) throws IOException
+  private FileSystem _validateDlc(Path dlcFile)
   {
-    if (dlcFile == null || !Files.isRegularFile(dlcFile)) {
+    if (dlcFile == null || !FileEx.create(dlcFile).isFile()) {
       return null;
     }
 

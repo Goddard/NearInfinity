@@ -7,7 +7,6 @@ package org.infinity.resource;
 import java.awt.Window;
 import java.io.File;
 import java.io.OutputStream;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.EnumMap;
@@ -23,6 +22,7 @@ import org.infinity.gui.NewProSettings;
 import org.infinity.gui.NewResSettings;
 import org.infinity.util.Misc;
 import org.infinity.util.ResourceStructure;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
@@ -36,7 +36,7 @@ public final class StructureFactory
     RES_VEF, RES_VVC, RES_WED, RES_WFX, RES_WMAP
   }
 
-  private static final EnumMap<ResType, String> resExt = new EnumMap<ResType, String>(ResType.class);
+  private static final EnumMap<ResType, String> resExt = new EnumMap<>(ResType.class);
   private static StructureFactory sfactory;
 
   static {
@@ -90,7 +90,7 @@ public final class StructureFactory
           roots.add(Profile.getGameRoot());
         }
         savePath = FileManager.query(roots, "Characters");
-        if (!Files.isDirectory(savePath)) {
+        if (!FileEx.create(savePath).isDirectory()) {
           savePath = FileManager.query(Profile.getGameRoot(), Profile.getOverrideFolderName());
         }
         break;
@@ -99,7 +99,7 @@ public final class StructureFactory
         savePath = FileManager.query(Profile.getGameRoot(), Profile.getOverrideFolderName());
         break;
     }
-    if (savePath == null || !Files.isDirectory(savePath) ) {
+    if (savePath == null || !FileEx.create(savePath).isDirectory()) {
       savePath = Profile.getGameRoot();
     }
     JFileChooser fc = new JFileChooser(savePath.toFile());
@@ -110,7 +110,7 @@ public final class StructureFactory
     fc.setSelectedFile(new File(fc.getCurrentDirectory(), "UNTITLED." + resExt.get(type)));
     if (fc.showSaveDialog(parent) == JFileChooser.APPROVE_OPTION) {
       Path outFile = fc.getSelectedFile().toPath();
-      if (Files.exists(outFile)) {
+      if (FileEx.create(outFile).exists()) {
         final String options[] = {"Overwrite", "Cancel"};
         if (JOptionPane.showOptionDialog(parent, outFile + "exists. Overwrite?", title, JOptionPane.YES_NO_OPTION,
                                          JOptionPane.WARNING_MESSAGE, null, options, options[0]) != 0)
@@ -178,7 +178,7 @@ public final class StructureFactory
     }
   }
 
-  private ResourceStructure create2DA() throws StructureException
+  private ResourceStructure create2DA()
   {
     ResourceStructure s_2da = new ResourceStructure();
     final String s = normalizeString("2DA V1.0\n0\n        COLUMN1\nROW1    0\n");
@@ -187,7 +187,7 @@ public final class StructureFactory
     return s_2da;
   }
 
-  private ResourceStructure createARE(String fileName) throws StructureException
+  private ResourceStructure createARE(String fileName)
   {
     ResourceStructure s_are = new ResourceStructure();
 
@@ -242,7 +242,7 @@ public final class StructureFactory
     return s_are;
   }
 
-  private ResourceStructure createBAF() throws StructureException
+  private ResourceStructure createBAF()
   {
     ResourceStructure s_baf = new ResourceStructure();
     final String s = "// Empty BCS script" + Misc.LINE_SEPARATOR;
@@ -251,7 +251,7 @@ public final class StructureFactory
     return s_baf;
   }
 
-  private ResourceStructure createBCS() throws StructureException
+  private ResourceStructure createBCS()
   {
     ResourceStructure s_bcs = new ResourceStructure();
     final String s = normalizeString("SC\nSC\n");
@@ -295,7 +295,7 @@ public final class StructureFactory
       return cancelOperation();
   }
 
-  private ResourceStructure createCRE() throws StructureException
+  private ResourceStructure createCRE()
   {
     final String[] version = {"V1.0", "V1.2", "V2.2", "V9.0"};
     final int[] ofs = {0x2d4, 0x378, 0, 0x33c};
@@ -388,7 +388,7 @@ public final class StructureFactory
     return s_cre;
   }
 
-  private ResourceStructure createEFF() throws StructureException
+  private ResourceStructure createEFF()
   {
     ResourceStructure s_eff = new ResourceStructure();
     s_eff.add(ResourceStructure.ID_STRING, 4, "EFF ");    // Signature
@@ -400,7 +400,7 @@ public final class StructureFactory
     return s_eff;
   }
 
-  private ResourceStructure createIDS() throws StructureException
+  private ResourceStructure createIDS()
   {
     ResourceStructure s_ids = new ResourceStructure();
     final String s = normalizeString("1\n0 Identifier1\n");
@@ -409,7 +409,7 @@ public final class StructureFactory
     return s_ids;
   }
 
-  private ResourceStructure createINI() throws StructureException
+  private ResourceStructure createINI()
   {
     // TODO: distinguish between games
     ResourceStructure s_ini = new ResourceStructure();
@@ -419,7 +419,7 @@ public final class StructureFactory
     return s_ini;
   }
 
-  private ResourceStructure createITM() throws StructureException
+  private ResourceStructure createITM()
   {
     final String[] version = {"V1  ", "V1.1", "V2.0"};
     final int[] ofs = {0x72, 0x9a, 0x82};
@@ -485,7 +485,7 @@ public final class StructureFactory
       return cancelOperation();
   }
 
-  private ResourceStructure createSPL() throws StructureException
+  private ResourceStructure createSPL()
   {
     final String[] version = {"V1  ", "V2.0"};
     final int[] ofs = {0x72, 0x82};
@@ -533,7 +533,7 @@ public final class StructureFactory
       return unsupportedFormat(ResType.RES_SRC);
   }
 
-  private ResourceStructure createSTO() throws StructureException
+  private ResourceStructure createSTO()
   {
     final String[] version = {"V1.0", "V1.1", "V9.0"};
     final int[] ofs = {0x9c, 0x9c, 0xf0};
@@ -564,7 +564,7 @@ public final class StructureFactory
     return s_sto;
   }
 
-  private ResourceStructure createVEF() throws StructureException
+  private ResourceStructure createVEF()
   {
     ResourceStructure s_vef = new ResourceStructure();
     s_vef.add(ResourceStructure.ID_STRING, 4, "VEF ");    // Signature
@@ -577,7 +577,7 @@ public final class StructureFactory
     return s_vef;
   }
 
-  private ResourceStructure createVVC() throws StructureException
+  private ResourceStructure createVVC()
   {
     ResourceStructure s_vvc = new ResourceStructure();
     s_vvc.add(ResourceStructure.ID_STRING, 4, "VVC ");    // Signature
@@ -587,7 +587,7 @@ public final class StructureFactory
     return s_vvc;
   }
 
-  private ResourceStructure createWED() throws StructureException
+  private ResourceStructure createWED()
   {
     ResourceStructure s_wed = new ResourceStructure();
     s_wed.add(ResourceStructure.ID_STRING, 4, "WED ");    // Signature
@@ -612,7 +612,7 @@ public final class StructureFactory
     return s_wed;
   }
 
-  private ResourceStructure createWFX() throws StructureException
+  private ResourceStructure createWFX()
   {
     ResourceStructure s_wfx = new ResourceStructure();
     s_wfx.add(ResourceStructure.ID_STRING, 4, "WFX ");    // Signature
@@ -622,7 +622,7 @@ public final class StructureFactory
     return s_wfx;
   }
 
-  private ResourceStructure createWMAP() throws StructureException
+  private ResourceStructure createWMAP()
   {
     ResourceStructure s_wmp = new ResourceStructure();
     s_wmp.add(ResourceStructure.ID_STRING, 4, "WMAP");    // Signature

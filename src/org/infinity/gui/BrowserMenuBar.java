@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2018 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.gui;
@@ -16,7 +16,6 @@ import java.awt.Insets;
 import java.awt.KeyEventDispatcher;
 import java.awt.Toolkit;
 import java.awt.event.ActionEvent;
-import static java.awt.event.ActionEvent.ALT_MASK;
 import java.awt.event.ActionListener;
 import java.awt.event.InputEvent;
 import java.awt.event.ItemEvent;
@@ -26,10 +25,10 @@ import java.awt.event.WindowAdapter;
 import java.awt.event.WindowEvent;
 import java.io.IOException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.util.ArrayList;
 import java.util.Collections;
+import java.util.EnumMap;
 import java.util.EnumSet;
 import java.util.Enumeration;
 import java.util.HashMap;
@@ -54,6 +53,7 @@ import javax.swing.JRadioButtonMenuItem;
 import javax.swing.JScrollPane;
 import javax.swing.JTextPane;
 import javax.swing.KeyStroke;
+import javax.swing.LookAndFeel;
 import javax.swing.UIManager;
 import javax.swing.UIManager.LookAndFeelInfo;
 
@@ -84,6 +84,7 @@ import org.infinity.resource.StructEntry;
 import org.infinity.resource.StructureFactory;
 import org.infinity.resource.Viewable;
 import org.infinity.resource.ViewableContainer;
+import org.infinity.resource.cre.browser.CreatureBrowser;
 import org.infinity.resource.key.FileResourceEntry;
 import org.infinity.resource.key.Keyfile;
 import org.infinity.resource.key.ResourceEntry;
@@ -97,16 +98,18 @@ import org.infinity.updater.UpdateInfo;
 import org.infinity.updater.Updater;
 import org.infinity.updater.UpdaterSettings;
 import org.infinity.util.CharsetDetector;
+import org.infinity.util.DataString;
 import org.infinity.util.MassExporter;
 import org.infinity.util.Misc;
-import org.infinity.util.ObjectString;
-import org.infinity.util.Pair;
+import org.infinity.util.Platform;
 import org.infinity.util.StringTable;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
+import org.infinity.util.tuples.Couple;
 
 public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
 {
-  public static final String VERSION = "v2.1-20200620";
+  public static final String VERSION = "v2.2-20210501";
   public static final LookAndFeelInfo DEFAULT_LOOKFEEL =
       new LookAndFeelInfo("Metal", "javax.swing.plaf.metal.MetalLookAndFeel");
 
@@ -127,7 +130,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
   private final HelpMenu helpMenu;
   private final Preferences prefsGui, prefsProfiles;
 
-  //<editor-fold defaultstate="collapsed" desc="Enumerations">
   /** Determines, in which virtual folder show resources from Override folder. */
   public enum OverrideMode
   {
@@ -201,7 +203,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
 
     private ViewMode(String title) { this.title = title; }
   }
-  //</editor-fold>
 
   public static BrowserMenuBar getInstance()
   {
@@ -568,6 +569,12 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     return optionsMenu.charsetName(optionsMenu.getSelectedButtonData(), true);
   }
 
+  /** Returns whether launching game executables in NI is enabled. */
+  public boolean getLauncherEnabled()
+  {
+    return optionsMenu.optionLaunchGameAllowed.isSelected();
+  }
+
   /** Returns whether a backup is created when resources are modified. */
   public boolean backupOnSave()
   {
@@ -642,6 +649,16 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     return (bookmark != null) ? bookmark.getName() : null;
   }
 
+  /**
+   * Attempts to find and return a matching bookmark object.
+   * @param keyFile The path to the game's chitin.key used to determine the correct bookmark instance.
+   * @return The matching bookmark instance if available, {@code null} otherwise.
+   */
+  public Bookmark getBookmarkOf(Path keyFile)
+  {
+    return gameMenu.getBookmarkOf(keyFile);
+  }
+
   public void storePreferences()
   {
     toolsMenu.storePreferences();
@@ -649,7 +666,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     gameMenu.storePreferences();
   }
 
-  //<editor-fold defaultstate="collapsed" desc="Debug helpers">
   @Override
   public boolean dispatchKeyEvent(KeyEvent e)
   {
@@ -709,7 +725,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     }
     return null;
   }
-  //</editor-fold>
 
 // -------------------------- INNER CLASSES --------------------------
 
@@ -718,15 +733,15 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
   ///////////////////////////////
   private static final class GameMenu extends JMenu implements ActionListener
   {
-    private final JMenuItem gameOpenFile, gameOpenGame, gameRefresh, gameExit, gameCloseTLK,
+    private final JMenuItem gameOpenFile, gameOpenGame, gameRefresh, gameExit,
                             gameProperties, gameBookmarkAdd, gameBookmarkEdit, gameRecentClear;
 
     private final JMenu gameRecent = new JMenu("Recently opened games");
-    private final List<RecentGame> recentList = new ArrayList<RecentGame>();
+    private final List<RecentGame> recentList = new ArrayList<>();
     private final JPopupMenu.Separator gameRecentSeparator = new JPopupMenu.Separator();
 
     private final JMenu gameBookmarks = new JMenu("Bookmarked games");
-    private final List<Bookmark> bookmarkList = new ArrayList<Bookmark>();
+    private final List<Bookmark> bookmarkList = new ArrayList<>();
     private final JPopupMenu.Separator gameBookmarkSeparator = new JPopupMenu.Separator();
 
     private GameMenu()
@@ -746,9 +761,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       gameRefresh.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_F5, 0));
       gameRefresh.setActionCommand("Refresh");
       add(gameRefresh);
-      gameCloseTLK = makeMenuItem("Release Dialog.tlk Lock", KeyEvent.VK_D, Icons.getIcon(Icons.ICON_RELEASE_16),
-                                  -1, this);
-      add(gameCloseTLK);
 
       gameProperties = makeMenuItem("Game Properties...", KeyEvent.VK_P, Icons.getIcon(Icons.ICON_EDIT_16), -1, this);
       add(gameProperties);
@@ -766,8 +778,18 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
                                                                           Profile.Game.Unknown.toString()));
         String gamePath = getPrefsProfiles().get(Bookmark.getPathKey(i), null);
         String gameName = getPrefsProfiles().get(Bookmark.getNameKey(i), null);
+        EnumMap<Platform.OS, List<String>> binPaths = null;
+        for (final Platform.OS os : Bookmark.getSupportedOS()) {
+          String path = getPrefsProfiles().get(Bookmark.getBinaryPathKey(os, i), null);
+          if (path != null) {
+            if (binPaths == null)
+              binPaths = new EnumMap<>(Platform.OS.class);
+            List<String> list = Bookmark.unpackBinPaths(os, path);
+            binPaths.put(os, list);
+          }
+        }
         try {
-          Bookmark b = new Bookmark(gameName, game, gamePath, this);
+          Bookmark b = new Bookmark(gameName, game, gamePath, binPaths, this);
           addBookmarkedGame(bookmarkList.size(), b);
         } catch (NullPointerException e) {
           // skipping entry
@@ -995,6 +1017,9 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
           getPrefsProfiles().remove(Bookmark.getNameKey(i));
           getPrefsProfiles().remove(Bookmark.getPathKey(i));
           getPrefsProfiles().remove(Bookmark.getGameKey(i));
+          for (final Platform.OS os : Bookmark.getSupportedOS()) {
+            getPrefsProfiles().remove(Bookmark.getBinaryPathKey(os, i));
+          }
         }
       }
       // 2. storing bookmarks in preferences
@@ -1004,6 +1029,13 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         getPrefsProfiles().put(Bookmark.getNameKey(i), bookmark.getName());
         getPrefsProfiles().put(Bookmark.getPathKey(i), bookmark.getPath());
         getPrefsProfiles().put(Bookmark.getGameKey(i), bookmark.getGame().toString());
+        for (final Platform.OS os : Bookmark.getSupportedOS()) {
+          String value = Bookmark.packBinPaths(os, bookmark.getBinaryPaths(os));
+          if (value.isEmpty())
+            getPrefsProfiles().remove(Bookmark.getBinaryPathKey(os, i));
+          else
+            getPrefsProfiles().put(Bookmark.getBinaryPathKey(os, i), value);
+        }
       }
 
       // storing recently used games
@@ -1050,7 +1082,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         }
         if (selected != -1) {
           Path keyFile = FileManager.resolve(bookmarkList.get(selected).getPath());
-          if (!Files.isRegularFile(keyFile)) {
+          if (!FileEx.create(keyFile).isFile()) {
             JOptionPane.showMessageDialog(NearInfinity.getInstance(),
                                           bookmarkList.get(selected).getPath() + " could not be found",
                                           "Open game failed", JOptionPane.ERROR_MESSAGE);
@@ -1069,7 +1101,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         }
         if (selected != -1) {
           Path keyFile = FileManager.resolve(recentList.get(selected).getPath());
-          if (!Files.isRegularFile(keyFile)) {
+          if (!FileEx.create(keyFile).isFile()) {
             JOptionPane.showMessageDialog(NearInfinity.getInstance(),
                                           recentList.get(selected).getPath() + " could not be found",
                                           "Open game failed", JOptionPane.ERROR_MESSAGE);
@@ -1077,9 +1109,6 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
             NearInfinity.getInstance().openGame(keyFile);
           }
         }
-      } else if (event.getSource() == gameCloseTLK) {
-        JOptionPane.showMessageDialog(NearInfinity.getInstance(), "Read lock released",
-                                      "Release Dialog.tlk", JOptionPane.INFORMATION_MESSAGE);
       } else if (event.getSource() == gameProperties) {
         new GameProperties(NearInfinity.getInstance());
       } else if (event.getSource() == gameBookmarkAdd) {
@@ -1327,7 +1356,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       editString =
           makeMenuItem("String table", KeyEvent.VK_S, Icons.getIcon(Icons.ICON_EDIT_16), KeyEvent.VK_S, this);
       add(editString);
-      // TODO: reactive when fixed
+      // TODO: reactivate when fixed
       editBIFF = makeMenuItem("BIFF", KeyEvent.VK_B, Icons.getIcon(Icons.ICON_EDIT_16), KeyEvent.VK_E, this);
       editBIFF.setToolTipText("Temporarily disabled");
       editBIFF.setEnabled(false);
@@ -1375,12 +1404,12 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
 
       advancedSearch =
           makeMenuItem("Advanced search...", KeyEvent.VK_A, Icons.getIcon(Icons.ICON_FIND_16), -1, this);
-      advancedSearch.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, CTRL_MASK | ALT_MASK));
+      advancedSearch.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_A, CTRL_MASK | ActionEvent.ALT_MASK));
       advancedSearch.setToolTipText("A powerful and highly flexible search for structured resources of all kinds.");
       menuAdvanced.add(advancedSearch);
       searchResource =
           makeMenuItem("Legacy extended search...", KeyEvent.VK_X, Icons.getIcon(Icons.ICON_FIND_16), -1, this);
-      searchResource.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, CTRL_MASK | ALT_MASK));
+      searchResource.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_X, CTRL_MASK | ActionEvent.ALT_MASK));
       searchResource.setToolTipText("The original \"Extended Search\".");
       menuAdvanced.add(searchResource);
 
@@ -1450,7 +1479,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
   {
     private static final String TOOLS_DEBUG_EXTRA_INFO  = "DebugShowExtraInfo";
 
-    private final JMenuItem toolInfinityAmp, toolCleanKeyfile, toolCheckAllDialog, toolCheckOverrideDialog;
+    private final JMenuItem toolInfinityAmp, toolCreatureBrowser, toolCleanKeyfile, toolCheckAllDialog, toolCheckOverrideDialog;
     private final JMenuItem toolCheckResRef, toolIDSBrowser, toolDropZone, toolCheckCREInv;
     private final JMenuItem toolCheckIDSRef, toolCheckIDSBCSRef, toolCheckScripts, toolCheckStructs;
     private final JMenuItem toolCheckStringUse, toolCheckStringIndex, toolCheckFileUse, toolMassExport;
@@ -1464,6 +1493,10 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     {
       super("Tools");
       setMnemonic(KeyEvent.VK_T);
+
+      toolCreatureBrowser = makeMenuItem("Creature Animation Browser", KeyEvent.VK_A,
+                                         Icons.getIcon(Icons.ICON_CRE_VIEWER_24), -1, this);
+      add(toolCreatureBrowser);
 
       toolInfinityAmp = makeMenuItem("InfinityAmp", KeyEvent.VK_I, Icons.getIcon(Icons.ICON_VOLUME_16), -1, this);
       add(toolInfinityAmp);
@@ -1598,7 +1631,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       add(toolConsole);
       dumpDebugInfo = new JMenuItem("Print debug info to Console", Icons.getIcon(Icons.ICON_PROPERTIES_16));
       dumpDebugInfo.setToolTipText("Output to console class of current top-level window, resource and selected field in the structure viewer");
-      dumpDebugInfo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, CTRL_MASK | ALT_MASK));
+      dumpDebugInfo.setAccelerator(KeyStroke.getKeyStroke(KeyEvent.VK_D, CTRL_MASK | ActionEvent.ALT_MASK));
       dumpDebugInfo.addActionListener(this);
       dumpDebugInfo.setEnabled(getPrefs().getBoolean(TOOLS_DEBUG_EXTRA_INFO, false));
       dumpDebugInfo.setVisible(dumpDebugInfo.isEnabled());
@@ -1652,7 +1685,10 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     @Override
     public void actionPerformed(ActionEvent event)
     {
-      if (event.getSource() == toolInfinityAmp) {
+      if (event.getSource() == toolCreatureBrowser) {
+        ChildFrame.show(CreatureBrowser.class, () -> new CreatureBrowser());
+      }
+      else if (event.getSource() == toolInfinityAmp) {
         ChildFrame.show(InfinityAmp.class, () -> new InfinityAmp());
       }
       else if (event.getSource() == toolIDSBrowser) {
@@ -1689,9 +1725,9 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       else if (event.getSource() == dumpDebugInfo) {
         dumpDebugInfo();
       }
-      else if (event.getSource() == toolCleanKeyfile)
+      else if (event.getSource() == toolCleanKeyfile) {
 //        cleanKeyfile();
-        ;
+      }
       else if (event.getSource() == toolDropZone) {
         ChildFrame.show(BcsDropFrame.class, () -> new BcsDropFrame());
       }
@@ -1746,7 +1782,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       new Font(Font.MONOSPACED, Font.PLAIN, 12), new Font(Font.SERIF, Font.PLAIN, 12),
       new Font(Font.SANS_SERIF, Font.PLAIN, 12), new Font(Font.DIALOG, Font.PLAIN, 12), null};
     private static final String DefaultCharset = "Auto";
-    private static final List<String[]> CharsetsUsed = new ArrayList<String[]>();
+    private static final List<String[]> CharsetsUsed = new ArrayList<>();
     /** BCS indentations to use when decompiling (indent, title). */
     private static final String[][] BCSINDENT = { {"  ", "2 Spaces"},
                                                   {"    ", "4 Spaces"},
@@ -1790,6 +1826,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     private static final String OPTION_BACKUPONSAVE             = "BackupOnSave";
     private static final String OPTION_IGNOREOVERRIDE           = "IgnoreOverride";
     private static final String OPTION_IGNOREREADERRORS         = "IgnoreReadErrors";
+    private static final String OPTION_LAUNCHGAMEALLOWED        = "LaunchGameAllowed";
     private static final String OPTION_SHOWUNKNOWNRESOURCES     = "ShowUnknownResources";
     private static final String OPTION_AUTOCHECK_BCS            = "AutocheckBCS";
     private static final String OPTION_AUTOGEN_BCS_COMMENTS     = "AutogenBCSComments";
@@ -1874,7 +1911,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
                               optionIgnoreOverride, optionIgnoreReadErrors, optionCacheOverride, optionShowStrrefs,
                               optionShowColoredStructures, optionShowHexColored, optionShowUnknownResources,
                               optionKeepViewOnCopy, optionTreeSearchNames,
-                              optionHighlightOverridden;
+                              optionHighlightOverridden, optionLaunchGameAllowed;
 //                              optionMonitorFileChanges;
     private final JMenu mCharsetMenu, mLanguageMenu;
     private ButtonGroup bgCharsetButtons;
@@ -1882,7 +1919,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     private int optionFixedInternal;
 
     /** Stores available languages in BG(2)EE. */
-    private final HashMap<JRadioButtonMenuItem, String> gameLanguage = new HashMap<JRadioButtonMenuItem, String>();
+    private final HashMap<JRadioButtonMenuItem, String> gameLanguage = new HashMap<>();
 
     private OptionsMenu()
     {
@@ -1897,6 +1934,12 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       optionBackupOnSave.setToolTipText("Enable this option to automatically create a backup " +
                                         "of the resource you want to save.");
       add(optionBackupOnSave);
+      optionLaunchGameAllowed =
+          new JCheckBoxMenuItem("Allow launching games", getPrefs().getBoolean(OPTION_LAUNCHGAMEALLOWED, true));
+      optionLaunchGameAllowed.setToolTipText("Enabling this option allows you to launch the game executable " +
+                                             "associated with the current game from within Near Infinity.");
+      optionLaunchGameAllowed.addActionListener(this);
+      add(optionLaunchGameAllowed);
       optionIgnoreOverride =
           new JCheckBoxMenuItem("Ignore Overrides", getPrefs().getBoolean(OPTION_IGNOREOVERRIDE, false));
       add(optionIgnoreOverride);
@@ -2255,6 +2298,14 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
           dbmi = new DataRadioButtonMenuItem(info[i].getName(),
                                              selectedLF.equalsIgnoreCase(info[i].getClassName()),
                                              info[i]);
+          try {
+            // L&F description is only available from class instance
+            Class<?> cls = Class.forName(info[i].getClassName());
+            Object o = cls.newInstance();
+            if (o instanceof LookAndFeel)
+              dbmi.setToolTipText(((LookAndFeel)o).getDescription());
+          } catch (Exception ex) {
+          }
           lookAndFeel.add(dbmi);
           bg.add(dbmi);
         }
@@ -2582,6 +2633,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       getPrefs().putBoolean(OPTION_SHOWSIZE, optionShowSize.isSelected());
       getPrefs().putBoolean(OPTION_SHOWSIZEHEX, optionSizeInHex.isSelected());
       getPrefs().putBoolean(OPTION_BACKUPONSAVE, optionBackupOnSave.isSelected());
+      getPrefs().putBoolean(OPTION_LAUNCHGAMEALLOWED, optionLaunchGameAllowed.isSelected());
       getPrefs().putBoolean(OPTION_IGNOREOVERRIDE, optionIgnoreOverride.isSelected());
       getPrefs().putBoolean(OPTION_IGNOREREADERRORS, optionIgnoreReadErrors.isSelected());
       getPrefs().putBoolean(OPTION_SHOWUNKNOWNRESOURCES, optionShowUnknownResources.isSelected());
@@ -2663,9 +2715,9 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     }
 
     /** Extracts entries of Game/Language pairs from the given argument. */
-    private List<Pair<String>> extractGameLanguages(String definition)
+    private List<Couple<String, String>> extractGameLanguages(String definition)
     {
-      List<Pair<String>> list = new ArrayList<Pair<String>>();
+      List<Couple<String, String>> list = new ArrayList<>();
       if (definition != null && !definition.isEmpty()) {
         String[] entries = definition.split(";");
         if (entries != null) {
@@ -2675,22 +2727,18 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
               Profile.Game game = Profile.gameFromString(elements[0]);
               if (game != Profile.Game.Unknown) {
                 String lang = elements[1].trim();
-                Pair<String> pair = null;
+                Couple<String, String> pair = null;
                 if (lang.equalsIgnoreCase(LANGUAGE_AUTODETECT)) {
-                  pair = new Pair<String>();
-                  pair.setFirst(game.toString());
-                  pair.setSecond(LANGUAGE_AUTODETECT);
+                  pair = Couple.with(game.toString(), LANGUAGE_AUTODETECT);
                 } else if (lang.matches("[a-z]{2}_[A-Z]{2}")) {
-                  pair = new Pair<String>();
-                  pair.setFirst(game.toString());
-                  pair.setSecond(lang);
+                  pair = Couple.with(game.toString(), lang);
                 }
 
                 // check if game/language pair is already in the list
                 if (pair != null) {
-                  for (final Pair<String> curPair: list) {
-                    if (curPair.getFirst().equalsIgnoreCase(pair.getFirst())) {
-                      curPair.setSecond(pair.getSecond());
+                  for (final Couple<String, String> curPair: list) {
+                    if (curPair.getValue0().equalsIgnoreCase(pair.getValue0())) {
+                      curPair.setValue1(pair.getValue1());
                       pair = null;
                       break;
                     }
@@ -2709,13 +2757,13 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     }
 
     /** Creates a formatted string out of the Game/Language pairs included in the given list. */
-    private String createGameLanguages(List<Pair<String>> list)
+    private String createGameLanguages(List<Couple<String, String>> list)
     {
       StringBuilder sb = new StringBuilder();
       if (list != null) {
-        for (Iterator<Pair<String>> iter = list.iterator(); iter.hasNext();) {
-          Pair<String> pair = iter.next();
-          sb.append(String.format("%s=%s", pair.getFirst(), pair.getSecond()));
+        for (final Iterator<Couple<String, String>> iter = list.iterator(); iter.hasNext();) {
+          Couple<String, String> pair = iter.next();
+          sb.append(String.format("%s=%s", pair.getValue0(), pair.getValue1()));
           if (iter.hasNext()) {
             sb.append(';');
           }
@@ -2725,14 +2773,14 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     }
 
     /** Adds or updates the Game/Language pair in the formatted "definition" string. */
-    private String updateGameLanguages(String definition, Pair<String> pair)
+    private String updateGameLanguages(String definition, Couple<String, String> pair)
     {
-      List<Pair<String>> list = extractGameLanguages(definition);
-      if (pair != null && pair.getFirst() != null && pair.getSecond() != null) {
+      List<Couple<String, String>> list = extractGameLanguages(definition);
+      if (pair != null && pair.getValue0() != null && pair.getValue1() != null) {
         // attempt to update existing entry first
-        for (final Pair<String> curPair: list) {
-          if (curPair.getFirst().equalsIgnoreCase(pair.getFirst())) {
-            curPair.setSecond(pair.getSecond());
+        for (final Couple<String, String> curPair: list) {
+          if (curPair.getValue0().equalsIgnoreCase(pair.getValue0())) {
+            curPair.setValue1(pair.getValue1());
             pair = null;
             break;
           }
@@ -2752,12 +2800,12 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     private String getGameLanguage(String definition, Profile.Game game)
     {
       if (game != null && game != Profile.Game.Unknown) {
-        List<Pair<String>> list = extractGameLanguages(definition);
-        for (Iterator<Pair<String>> iter = list.iterator(); iter.hasNext();) {
-          Pair<String> pair = iter.next();
-          Profile.Game curGame = Profile.gameFromString(pair.getFirst());
+        List<Couple<String, String>> list = extractGameLanguages(definition);
+        for (final Iterator<Couple<String, String>> iter = list.iterator(); iter.hasNext();) {
+          Couple<String, String> pair = iter.next();
+          Profile.Game curGame = Profile.gameFromString(pair.getValue0());
           if (curGame == game) {
-            return pair.getSecond();
+            return pair.getValue1();
           }
         }
       }
@@ -2794,7 +2842,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
           if (Profile.updateGameLanguage(newLanguageCode)) {
             languageDefinition =
                 updateGameLanguages(languageDefinition,
-                                    new Pair<String>(Profile.getGame().toString(), newLanguage));
+                                    Couple.with(Profile.getGame().toString(), newLanguage));
             NearInfinity.getInstance().refreshGame();
             success = true;
           } else {
@@ -2976,6 +3024,9 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
 //      } else if (event.getSource() == selectFont[selectFont.length - 1]) {
       if (event.getSource() == optionShowOffset) {
         optionOffsetRelative.setEnabled(optionShowOffset.isSelected());
+      }
+      else if (event.getSource() == optionLaunchGameAllowed) {
+        NearInfinity.getInstance().updateLauncher();
       }
       else if (event.getSource() == optionShowSize) {
         optionSizeInHex.setEnabled(optionShowSize.isSelected());
@@ -3248,42 +3299,44 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       // title string
       final String versionString = "Near Infinity " + VERSION;
       // list of current links
-      final ObjectString[] currentLinks = {
-          new ObjectString("Active branch", "https://github.com/Argent77/NearInfinity/"),
-          new ObjectString("Main branch", "https://github.com/NearInfinityBrowser/NearInfinity/"),
-          new ObjectString("Wiki page", wikiUrl),
-      };
+      final List<DataString<String>> currentLinks = new ArrayList<DataString<String>>() {{
+          add(DataString.with("Active branch", "https://github.com/Argent77/NearInfinity/"));
+          add(DataString.with("Main branch", "https://github.com/NearInfinityBrowser/NearInfinity/"));
+          add(DataString.with("Wiki page", wikiUrl));
+      }};
       // original author
       final String originalVersion = "From Near Infinity 1.32.1 beta 24";
       final String originalCopyright = "Copyright (\u00A9) 2001-2005 - Jon Olav Hauglid";
-      final ObjectString originalLink = new ObjectString("Website", "http://www.idi.ntnu.no/~joh/ni/");
+      final DataString<String> originalLink = DataString.with("Website", "http://www.idi.ntnu.no/~joh/ni/");
       // List of contributors (sorted alphabetically)
-      final String[] contributors = {
-          "Argent77",
-          "devSin",
-          "Fredrik Lindgren (aka Wisp)",
-          "FredSRichardson",
-          "Mingun",
-          "Taimon",
-          "Valerio Bigiani (aka The Bigg)",
-      };
+      final List<String> contributors = new ArrayList<String>() {{
+        add("Argent77");
+        add("Bubb");
+        add("devSin");
+        add("Fredrik Lindgren (aka Wisp)");
+        add("FredSRichardson");
+        add("Mingun");
+        add("Taimon");
+        add("Valerio Bigiani (aka The Bigg)");
+        add("winterheart");
+      }};
       // More contributors, in separate block
-      final String[] contributorsMisc = {
-          "Near Infinity logo/icon by Cuv and Troodon80",
-      };
+      final List<String> contributorsMisc = new ArrayList<String>() {{
+        add("Near Infinity logo/icon by Cuv and Troodon80");
+      }};
       // copyright message
-      final String[] copyNearInfinityText = {
-          "This program is free and may be distributed according to the terms of ",
-          "the GNU Lesser General Public License."
-      };
+      final List<String> copyNearInfinityText = new ArrayList<String>() {{
+        add("This program is free and may be distributed according to the terms of ");
+        add("the GNU Lesser General Public License.");
+      }};
       // Third-party copyright messages
-      final String[] copyThirdPartyText = {
-          "Most icons (\u00A9) eclipse.org - Common Public License.",
-          "RSyntaxTextArea (\u00A9) Fifesoft - Berkeley Software Distribution License.",
-          "Monte Media Library by Werner Randelshofer - GNU Lesser General Public License.",
-          "JOrbis (\u00A9) JCraft Inc. - GNU Lesser General Public License.",
-          "JHexView by Sebastian Porst - GNU General Public License.",
-      };
+      final List<String> copyThirdPartyText = new ArrayList<String>() {{
+        add("Most icons (\u00A9) eclipse.org - Common Public License.");
+        add("RSyntaxTextArea (\u00A9) Fifesoft - Berkeley Software Distribution License.");
+        add("Monte Media Library by Werner Randelshofer - GNU Lesser General Public License.");
+        add("JOrbis (\u00A9) JCraft Inc. - GNU Lesser General Public License.");
+        add("JHexView by Sebastian Porst - GNU General Public License.");
+      }};
 
       // Fixed elements
       final Font defaultfont = UIManager.getFont("Label.font");
@@ -3301,11 +3354,11 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       {
         int row = 0;
         // current links
-        for (int i = 0; i < currentLinks.length; i++, row++) {
+        for (int i = 0; i < currentLinks.size(); i++, row++) {
           int top = (i > 0) ? 4 : 0;
-          JLabel lTitle = new JLabel(currentLinks[i].getString() + ":");
+          JLabel lTitle = new JLabel(currentLinks.get(i).getString() + ":");
           lTitle.setFont(font);
-          String link = currentLinks[i].getObject();
+          String link = currentLinks.get(i).getData();
           JLabel lLink = ViewerUtil.createUrlLabel(link);
           lLink.setFont(font);
           gbc = ViewerUtil.setGBC(gbc, 0, row, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
@@ -3334,7 +3387,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         gbc = ViewerUtil.setGBC(gbc, 0, row, 1, 1, 0.0, 0.0, GridBagConstraints.LINE_START,
                                 GridBagConstraints.HORIZONTAL, new Insets(4, 0, 0, 0), 0, 0);
         pLinks.add(label, gbc);
-        String link = originalLink.getObject();
+        String link = originalLink.getData();
         label = ViewerUtil.createUrlLabel(link);
         label.setFont(font);
         gbc = ViewerUtil.setGBC(gbc, 1, row, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
@@ -3349,8 +3402,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         // trying to limit line width to a certain maximum
         FontMetrics fm = getFontMetrics(font);
         double maxWidth = 0.0;
-        for (int i = 0; i < currentLinks.length; i++) {
-          String s = currentLinks[i].getString() + ": " + currentLinks[i].getObject();
+        for (int i = 0; i < currentLinks.size(); i++) {
+          String s = currentLinks.get(i).getString() + ": " + currentLinks.get(i).getData();
           maxWidth = Math.max(maxWidth, fm.getStringBounds(s, getGraphics()).getWidth());
         }
 
@@ -3365,15 +3418,15 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
 
         // adding names
         StringBuilder sb = new StringBuilder();
-        for (int i = 0; i < contributors.length; i++) {
+        for (int i = 0; i < contributors.size(); i++) {
           if (i > 0) {
-            if (i+1 == contributors.length) {
+            if (i+1 == contributors.size()) {
               sb.append(" and ");
             } else {
               sb.append(", ");
             }
           }
-          String s = sb.toString() + contributors[i];
+          String s = sb.toString() + contributors.get(i);
           if (fm.getStringBounds(s, getGraphics()).getWidth() > maxWidth) {
             label = new JLabel(sb.toString());
             label.setFont(smallFont);
@@ -3383,7 +3436,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
             row++;
             sb = new StringBuilder();
           }
-          sb.append(contributors[i]);
+          sb.append(contributors.get(i));
         }
         label = new JLabel(sb.toString());
         label.setFont(smallFont);
@@ -3393,8 +3446,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         row++;
 
         // Adding misc. contributors
-        for (int i = 0; i < contributorsMisc.length; i++) {
-          label = new JLabel(contributorsMisc[i]);
+        for (int i = 0; i < contributorsMisc.size(); i++) {
+          label = new JLabel(contributorsMisc.get(i));
           label.setFont(smallFont);
           gbc = ViewerUtil.setGBC(gbc, 0, row, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
                                   GridBagConstraints.HORIZONTAL, new Insets(i == 0 ? 4 : 0, 0, 0, 0), 0, 0);
@@ -3414,8 +3467,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         pLicense.add(label, gbc);
         row++;
 
-        for (int i = 0; i < copyNearInfinityText.length; i++) {
-          label = new JLabel(copyNearInfinityText[i]);
+        for (int i = 0; i < copyNearInfinityText.size(); i++) {
+          label = new JLabel(copyNearInfinityText.get(i));
           label.setFont(smallFont);
           gbc = ViewerUtil.setGBC(gbc, 0, row, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
                                   GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0);
@@ -3435,8 +3488,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         pMiscLicenses.add(label, gbc);
         row++;
 
-        for (int i = 0; i < copyThirdPartyText.length; i++) {
-          label = new JLabel(copyThirdPartyText[i]);
+        for (int i = 0; i < copyThirdPartyText.size(); i++) {
+          label = new JLabel(copyThirdPartyText.get(i));
           label.setFont(smallFont);
           gbc = ViewerUtil.setGBC(gbc, 0, row, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
                                   GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0);
@@ -3489,24 +3542,33 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
   }
 
   /** Manages bookmarked game entries. */
-  static final class Bookmark implements Cloneable
+  public static final class Bookmark implements Cloneable
   {
     /** "Bookmarks" preferences entries (numbers are 1-based). */
     private static final String BOOKMARK_NUM_ENTRIES  = "BookmarkEntries";
     private static final String FMT_BOOKMARK_NAME     = "BookmarkName%d";
     private static final String FMT_BOOKMARK_ID       = "BookmarkID%d";
     private static final String FMT_BOOKMARK_PATH     = "BookmarkPath%d";
+    private static final String FMT_BOOKMARK_BIN_PATH = "BookmarkPath%s%d"; // %s: Platform.OS, %d: bookmark index
 
     private static final String MENUITEM_COMMAND      = "OpenBookmark";
 
+    private static final Platform.OS[] SUPPORTED_OS = { Platform.OS.Windows, Platform.OS.MacOS, Platform.OS.Unix };
+
     private final Profile.Game game;
     private final String path;
+    private final EnumMap<Platform.OS, List<String>> binPaths = new EnumMap<>(Platform.OS.class);
 
     private String name;
     private ActionListener listener;
     private JMenuItem item;
 
     public Bookmark(String name, Profile.Game game, String path, ActionListener listener)
+    {
+      this(name, game, path, null, listener);
+    }
+
+    public Bookmark(String name, Profile.Game game, String path, EnumMap<Platform.OS, List<String>> binPaths, ActionListener listener)
     {
       if (game == null || path == null) {
         throw new NullPointerException();
@@ -3518,6 +3580,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
       this.game = game;
       this.path = path;
       this.listener = listener;
+      if (binPaths != null)
+        this.binPaths.putAll(binPaths);
       updateMenuItem();
     }
 
@@ -3530,9 +3594,8 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     @Override
     public Object clone() throws CloneNotSupportedException
     {
-      return new Bookmark(getName(), getGame(), getPath(), listener);
+      return new Bookmark(name, game, path, binPaths, listener);
     }
-
 
     /** Returns user-defined game name. */
     public String getName() { return name; }
@@ -3554,11 +3617,42 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     /** Returns game path (i.e. full path to the chitin.key). */
     public String getPath() { return path; }
 
+    /** Returns a list of available paths to executables for the current platform. */
+    public List<String> getBinaryPaths() { return getBinaryPaths(Platform.getPlatform()); }
+
+    /** Returns a list of available paths to executables for the given platform. */
+    public List<String> getBinaryPaths(Platform.OS os)
+    {
+      if (os == null)
+        os = Platform.getPlatform();
+      return Collections.unmodifiableList(binPaths.getOrDefault(os, new ArrayList<String>(1)));
+    }
+
+    /** Assigns a new list of executable paths to the specified platform. Returns the previous path list if available. */
+    public List<String> setBinaryPaths(Platform.OS os, List<String> pathList)
+    {
+      if (os == null)
+        os = Platform.getPlatform();
+      List<String> retVal = binPaths.get(os);
+
+      List<String> newList = new ArrayList<>();
+      if (pathList != null) {
+        for (String path : pathList) {
+          if (path != null && !(path = path.trim()).isEmpty()) {
+            newList.add(path);
+          }
+        }
+      }
+      binPaths.put(os, newList);
+
+      return retVal;
+    }
+
     /** Returns associated menu item. */
     public JMenuItem getMenuItem() { return item; }
 
     /** Returns whether the bookmark points to an existing game installation. */
-    public boolean isEnabled() { return (Files.isRegularFile(FileManager.resolve(path))); }
+    public boolean isEnabled() { return (FileEx.create(FileManager.resolve(path)).isFile()); }
 
     /** Returns ActionListener used by the associated menu item. */
     public ActionListener getActionListener() { return listener; }
@@ -3632,6 +3726,71 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
         return null;
       }
     }
+
+    /** Returns the Preferences key for a specific BookmarkBinPath for the current platform. */
+    public static String getBinaryPathKey(int idx)
+    {
+      return getBinaryPathKey(Platform.getPlatform(), idx);
+    }
+
+    /** Returns the Preferences key for a specific BookmarkBinPath for the given platform. */
+    public static String getBinaryPathKey(Platform.OS os, int idx)
+    {
+      if (idx >= 0) {
+        return String.format(FMT_BOOKMARK_BIN_PATH, os.name().toUpperCase(Locale.ENGLISH), idx+1);
+      } else {
+        return null;
+      }
+    }
+
+    /**
+     * Constructs a Preferences string value out of the specified list of path strings.
+     * @param os Platform associated with the path strings. Needed to determine the correct path separator.
+     * @param binPaths List of path strings.
+     * @return A string consisting of concatenated path strings.
+     */
+    public static String packBinPaths(Platform.OS os, List<String> binPaths)
+    {
+      StringBuilder sb = new StringBuilder();
+      if (os != null && binPaths != null && !binPaths.isEmpty()) {
+        String sep = (os == Platform.OS.Windows) ? ";" : ":";
+        for (int i = 0; i < binPaths.size(); i++) {
+          String path = binPaths.get(i);
+          if (path != null && !(path = path.trim()).isEmpty()) {
+            path = path.replace(sep, "?");  // hack: avoid ambiguity with path separator char
+            if (sb.length() > 0)
+              sb.append(sep);
+            sb.append(path);
+          }
+        }
+      }
+      return sb.toString();
+    }
+
+    /**
+     * Splits all paths defined in the specified argument and returns them as a list.
+     */
+    public static List<String> unpackBinPaths(Platform.OS os, String paths)
+    {
+      List<String> list = new ArrayList<>();
+      if (os != null && paths != null) {
+        String sep = (os == Platform.OS.Windows) ? ";" : ":";
+        String[] items = paths.split(sep);
+        for (String item : items) {
+          item = item.replace("?", sep);  // hack: fix ambiguity with path separator char
+          item = item.trim();
+          if (!item.isEmpty())
+            list.add(item);
+        }
+      }
+      return list;
+    }
+
+    /** Returns an array containing all supported {@code Platform.OS} types. */
+    public static Platform.OS[] getSupportedOS()
+    {
+      return SUPPORTED_OS;
+    }
   }
 
   /** Manages individual "Recently used games" entries. */
@@ -3654,7 +3813,7 @@ public final class BrowserMenuBar extends JMenuBar implements KeyEventDispatcher
     public RecentGame(Profile.Game game, String path, int index, ActionListener listener)
     {
       if (game == null || game == Profile.Game.Unknown ||
-          path == null || !Files.isRegularFile(FileManager.resolve(path))) {
+          path == null || !FileEx.create(FileManager.resolve(path)).isFile()) {
         throw new NullPointerException();
       }
       this.game = game;

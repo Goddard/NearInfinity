@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2005 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.itm;
@@ -22,13 +22,13 @@ import org.infinity.resource.AbstractAbility;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
 import org.infinity.resource.Effect;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.ResourceFactory;
 import org.infinity.util.io.StreamUtils;
 
-public final class Ability extends AbstractAbility implements AddRemovable, HasAddRemovable, HasViewerTabs
+public final class Ability extends AbstractAbility implements AddRemovable, HasChildStructs, HasViewerTabs
 {
   // ITM/Ability-specific field labels (more fields defined in AbstractAbility)
   public static final String ITM_ABIL                     = "Item ability";
@@ -51,7 +51,7 @@ public final class Ability extends AbstractAbility implements AddRemovable, HasA
   public static final String[] s_abilityuse = {"", "Weapon", "Spell", "Item", "Ability", "reserved"};
   public static final String[] s_recharge = {
     "No flags set", "Add strength bonus", "Breakable", "EE: Damage strength bonus",
-    "EE: THAC0 strength bonus", null, null, null, null, null, "EE: Break Sanctuary;Ignored for Target: Caster",
+    "EE: THAC0 strength bonus", null, null, null, null, null, "EE: Break Sanctuary/Invisibility;Ignored for Target: Caster",
     "Hostile", "Recharge after resting", null, null, null, null, "Bypass armor", "Keen edge", null,
     null, null, null, null, null, null, "Ex: Toggle backstab", "EE/Ex: Cannot target invisible"};
 
@@ -65,10 +65,8 @@ public final class Ability extends AbstractAbility implements AddRemovable, HasA
     super(superStruct, ITM_ABIL + " " + number, buffer, offset);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new Effect()};
   }
@@ -80,26 +78,10 @@ public final class Ability extends AbstractAbility implements AddRemovable, HasA
   }
 
   @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-//--------------------- Begin Interface AddRemovable ---------------------
-
-  @Override
   public boolean canRemove()
   {
     return true;
   }
-
-//--------------------- End Interface AddRemovable ---------------------
-
-
-// --------------------- Begin Interface HasViewerTabs ---------------------
 
   @Override
   public int getViewerTabCount()
@@ -124,8 +106,6 @@ public final class Ability extends AbstractAbility implements AddRemovable, HasA
   {
     return true;
   }
-
-// --------------------- End Interface HasViewerTabs ---------------------
 
   @Override
   public int read(ByteBuffer buffer, int offset) throws Exception

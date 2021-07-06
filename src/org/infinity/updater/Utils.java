@@ -4,6 +4,8 @@
 
 package org.infinity.updater;
 
+import static org.infinity.util.Misc.toNumber;
+
 import java.awt.Desktop;
 import java.io.ByteArrayOutputStream;
 import java.io.File;
@@ -23,7 +25,6 @@ import java.net.URL;
 import java.net.URLConnection;
 import java.net.UnknownServiceException;
 import java.nio.charset.Charset;
-import java.nio.file.Files;
 import java.nio.file.Path;
 import java.nio.file.Paths;
 import java.security.MessageDigest;
@@ -47,7 +48,7 @@ import java.util.zip.ZipInputStream;
 import javax.net.ssl.HttpsURLConnection;
 import javax.net.ssl.SSLPeerUnverifiedException;
 
-import static org.infinity.util.Misc.toNumber;
+import org.infinity.util.io.FileEx;
 
 /**
  * Generic collection of updater-related methods.
@@ -87,7 +88,7 @@ public class Utils
       if (url != null) {
         try {
           Path file = Paths.get(url.toURI());
-          if (Files.exists(file)) {
+          if (FileEx.create(file).exists()) {
             return file.toString();
           }
         } catch (URISyntaxException e) {
@@ -321,7 +322,6 @@ public class Utils
         }
       } else {
         // more generic method
-        InputStream is = null;
         URLConnection conn = null;
         if (proxy != null) {
           conn = url.openConnection(proxy);
@@ -329,9 +329,10 @@ public class Utils
           conn = url.openConnection();
         }
         if (conn != null) {
-          is = url.openStream();
-          is.close();
-          return true;
+          try (InputStream is = url.openStream()) {
+            return true;
+          } catch (IOException e) {
+          }
         }
       }
     }
@@ -553,9 +554,8 @@ public class Utils
       if (conn != null) {
         int timeout = conn.getConnectTimeout();
         conn.setConnectTimeout(6000);   // wait max. 6 seconds
-        InputStream is = conn.getInputStream();
-        conn.setConnectTimeout(timeout);
-        try {
+        try (InputStream is = conn.getInputStream()) {
+          conn.setConnectTimeout(timeout);
           switch (type) {
             case ORIGINAL:
               return downloadRaw(is, os, url, proxy, listeners);
@@ -566,9 +566,6 @@ public class Utils
             case UNKNOWN:
               return false;
           }
-        } finally {
-          is.close();
-          is = null;
         }
       }
     }
@@ -623,9 +620,8 @@ public class Utils
       throws IOException, ZipException
   {
     if (is != null && os != null) {
-      ZipInputStream zis = new ZipInputStream(is);
-      byte[] buffer = new byte[4096];
-      try {
+      try (ZipInputStream zis = new ZipInputStream(is)) {
+        byte[] buffer = new byte[4096];
         ZipEntry entry = zis.getNextEntry();
         if (entry != null) {
           int totalSize = (int)entry.getSize();
@@ -643,10 +639,6 @@ public class Utils
           fireProgressEvent(listeners, url, curSize, totalSize, true);
           return true;
         }
-      } finally {
-        zis.close();
-        zis = null;
-        buffer = null;
       }
     }
     return false;

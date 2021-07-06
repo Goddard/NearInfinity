@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.are;
@@ -35,7 +35,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.Resource;
@@ -64,7 +64,7 @@ import org.infinity.util.io.StreamUtils;
  * {@link Container container} is stored in the ARE file, however the files themselves are
  * not embedded in the ARE file.
  */
-public final class AreResource extends AbstractStruct implements Resource, HasAddRemovable, HasViewerTabs
+public final class AreResource extends AbstractStruct implements Resource, HasChildStructs, HasViewerTabs
 {
   // ARE-specific field labels
   public static final String ARE_WED_RESOURCE             = "WED resource";
@@ -385,24 +385,18 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
     super(entry);
   }
 
-//--------------------- Begin Interface Closeable ---------------------
-
- @Override
- public void close() throws Exception
- {
-   super.close();
-   if (areaViewer != null) {
-     areaViewer.close();
-     areaViewer = null;
-   }
- }
-
-//--------------------- End Interface Closeable ---------------------
-
-// --------------------- Begin Interface HasAddRemovable ---------------------
+  @Override
+  public void close() throws Exception
+  {
+    super.close();
+    if (areaViewer != null) {
+      areaViewer.close();
+      areaViewer = null;
+    }
+  }
 
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     if (Profile.getEngine() == Profile.Engine.PST) {
       return new AddRemovable[]{new Actor(), new ITEPoint(), new SpawnPoint(),
@@ -428,17 +422,6 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
   {
     return entry;
   }
-
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-// --------------------- Begin Interface HasViewerTabs ---------------------
 
   @Override
   public int getViewerTabCount()
@@ -485,18 +468,11 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
     return (index == 0);
   }
 
-// --------------------- End Interface HasViewerTabs ---------------------
-
-
-// --------------------- Begin Interface Writeable ---------------------
-
   @Override
   public void write(OutputStream os) throws IOException
   {
     super.writeFlatFields(os);
   }
-
-// --------------------- End Interface Writeable ---------------------
 
   @Override
   protected void viewerInitialized(StructViewer viewer)
@@ -989,8 +965,8 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
         Object o;
 
         // preparing substructures
-        DecNumber ofs = (DecNumber)are.getAttribute(ARE_OFFSET_ACTORS, false);
-        DecNumber cnt = (DecNumber)are.getAttribute(ARE_NUM_ACTORS, false);
+        IsNumeric ofs = (IsNumeric)are.getAttribute(ARE_OFFSET_ACTORS, false);
+        IsNumeric cnt = (IsNumeric)are.getAttribute(ARE_NUM_ACTORS, false);
         if (ofs != null && ofs.getValue() > 0 && cnt != null && cnt.getValue() > 0) {
           actors = new Actor[cnt.getValue()];
           for (int idx = 0; idx < actors.length; idx++) {
@@ -1000,8 +976,8 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
           actors = new Actor[0];
         }
 
-        ofs = (DecNumber)are.getAttribute(ARE_OFFSET_ANIMATIONS, false);
-        cnt = (DecNumber)are.getAttribute(ARE_NUM_ANIMATIONS, false);
+        ofs = (IsNumeric)are.getAttribute(ARE_OFFSET_ANIMATIONS, false);
+        cnt = (IsNumeric)are.getAttribute(ARE_NUM_ANIMATIONS, false);
         if (ofs != null && ofs.getValue() > 0 && cnt != null && cnt.getValue() > 0) {
           animations = new Animation[cnt.getValue()];
           for (int idx = 0; idx < animations.length; idx++) {
@@ -1011,15 +987,15 @@ public final class AreResource extends AbstractStruct implements Resource, HasAd
           animations = new Animation[0];
         }
 
-        ofs = (DecNumber)are.getAttribute(ARE_OFFSET_CONTAINERS, false);
-        cnt = (DecNumber)are.getAttribute(ARE_NUM_CONTAINERS, false);
+        ofs = (IsNumeric)are.getAttribute(ARE_OFFSET_CONTAINERS, false);
+        cnt = (IsNumeric)are.getAttribute(ARE_NUM_CONTAINERS, false);
         if (ofs != null && ofs.getValue() > 0 && cnt != null && cnt.getValue() > 0) {
           items = new Item[cnt.getValue()][];
           for (int i = 0; i < cnt.getValue(); i++) {
             String label = String.format(SearchOptions.getResourceName(SearchOptions.ARE_Container), i);
             Container container = (Container)are.getAttribute(label, false);
             if (container != null) {
-              DecNumber cnt2 = (DecNumber)container.getAttribute(ARE_NUM_ITEMS, false);
+              IsNumeric cnt2 = (IsNumeric)container.getAttribute(ARE_NUM_ITEMS, false);
               if (cnt2 != null && cnt2.getValue() > 0) {
                 items[i] = new Item[cnt2.getValue()];
                 for (int j = 0; j < cnt2.getValue(); j++) {

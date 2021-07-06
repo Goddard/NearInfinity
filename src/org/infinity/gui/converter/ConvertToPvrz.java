@@ -56,6 +56,7 @@ import org.infinity.resource.graphics.Compressor;
 import org.infinity.resource.graphics.DxtEncoder;
 import org.infinity.util.DynamicArray;
 import org.infinity.util.SimpleListModel;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
@@ -480,7 +481,7 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
   // checks graphics input file properties
   private static boolean isValidGraphicsInput(Path inFile)
   {
-    boolean result = (inFile != null && Files.isRegularFile(inFile));
+    boolean result = (inFile != null && FileEx.create(inFile).isFile());
     if (result) {
       Dimension d = ColorConvert.getImageDimension(inFile);
       if (d == null || d.width <= 0 || d.width > 1024 || d.height <= 0 || d.height > 1024) {
@@ -493,7 +494,7 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
   // checks PVR input file properties
   private static boolean isValidPVRInput(Path inFile)
   {
-    boolean result = (inFile != null && Files.isRegularFile(inFile));
+    boolean result = (inFile != null && FileEx.create(inFile).isFile());
     if (result) {
       try (InputStream is = StreamUtils.getInputStream(inFile)) {
         String sig = StreamUtils.readString(is, 4);
@@ -540,15 +541,15 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
     if (tfTargetDir.getText() != null && !tfTargetDir.getText().isEmpty()) {
       targetPath = FileManager.resolve(tfTargetDir.getText());
     }
-    if (!Files.isDirectory(targetPath)) {
-      List<String> l = new Vector<String>(2);
+    if (!FileEx.create(targetPath).isDirectory()) {
+      List<String> l = new Vector<>(2);
       l.add(null);
       l.add("Invalid target directory specified. No conversion takes place.");
       return l;
     }
 
     if (lInputModel.isEmpty()) {
-      List<String> l = new Vector<String>(2);
+      List<String> l = new Vector<>(2);
       l.add(null);
       l.add("No source file(s) specified. No conversion takes place.");
       return l;
@@ -594,7 +595,7 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
         Path outFile = targetPath.resolve(outFileName);
 
         // handling overwrite existing file
-        if (Files.exists(outFile)) {
+        if (FileEx.create(outFile).exists()) {
           if (skip) {
             skippedFiles++;
             continue;
@@ -719,7 +720,7 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
               if (progress.isCanceled()) {
                 progress.close();
                 progress = null;
-                List<String> l = new Vector<String>(2);
+                List<String> l = new Vector<>(2);
                 l.add(null);
                 l.add("Conversion cancelled.");
                 return l;
@@ -772,7 +773,7 @@ public class ConvertToPvrz extends ChildFrame implements ActionListener, Propert
     progress = null;
 
     // constructing failure/success message
-    List<String> l = new Vector<String>(2);
+    List<String> l = new Vector<>(2);
     StringBuilder sb = new StringBuilder();
     if (warnings == 0 && errors == 0) {
       sb.append("Conversion finished successfully.");

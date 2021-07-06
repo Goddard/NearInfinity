@@ -27,6 +27,7 @@ import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.Profile;
 import org.infinity.resource.StructEntry;
 import org.infinity.updater.Utils;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.StreamUtils;
 
 /**
@@ -868,9 +869,7 @@ public class StringTable
 
     if (callback != null) { callback.init(tableMale._getNumEntries()); }
     boolean retVal = true;
-    PrintWriter writer = null;
-    try {
-      writer = new PrintWriter(outFile.toFile(), getCharset().name());
+    try (PrintWriter writer = new PrintWriter(outFile.toFile(), getCharset().name())) {
       String newline = System.getProperty("line.separator");
       // writing header
       String niPath = Utils.getJarFileName(NearInfinity.class);
@@ -946,7 +945,6 @@ public class StringTable
       e.printStackTrace();
       retVal = false;
     } finally {
-      if (writer != null) { writer.close(); }
       if (callback != null) { callback.done(retVal); }
     }
 
@@ -1341,11 +1339,11 @@ public class StringTable
 
       // 1. backing up current string table file if needed
       Path pathBackup = null;
-      if (Files.isRegularFile(tlkPath)) {
+      if (FileEx.create(tlkPath).isFile()) {
         String name = tlkPath.getFileName().toString();
         for (int i = 0; i < 999; i++) {
           Path path = tlkPath.getParent().resolve(name + "-" + i);
-          if (!Files.exists(path)) {
+          if (!FileEx.create(path).exists()) {
             pathBackup = path;
             break;
           }
@@ -1451,9 +1449,7 @@ public class StringTable
     synchronized (entries) {
       if (callback != null) { callback.init(_getNumEntries()); }
       boolean success = false;
-      PrintWriter writer = null;
-      try {
-        writer = new PrintWriter(outFile.toFile(), getCharset().name());
+      try (PrintWriter writer = new PrintWriter(outFile.toFile(), getCharset().name())) {
         String newline = System.getProperty("line.separator");
         for (int idx = 0; idx < _getNumEntries(); idx++) {
           if (callback != null) {
@@ -1471,7 +1467,6 @@ public class StringTable
         success = false;
         throw e;
       } finally {
-        writer.close();
         if (callback != null) { callback.done(success); }
       }
     }
@@ -1480,7 +1475,7 @@ public class StringTable
 //-------------------------- INNER CLASSES --------------------------
 
   // Manages a single string entry
-  public static class StringEntry extends AbstractStruct implements Cloneable
+  public static class StringEntry extends AbstractStruct
   {
     // Default entry for non-existing indices
     private static final StringEntry INVALID = new StringEntry(null, FLAGS_HAS_TEXT, "", 0, 0, "No such index");

@@ -21,6 +21,7 @@ import org.infinity.resource.Writeable;
 import org.infinity.resource.key.FileResourceEntry;
 import org.infinity.resource.key.ResourceEntry;
 import org.infinity.util.FileDeletionHook;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.StreamUtils;
 
 public final class IOHandler implements Writeable
@@ -63,7 +64,7 @@ public final class IOHandler implements Writeable
 
   public void close()
   {
-    if (tempFolder != null && Files.isDirectory(tempFolder)) {
+    if (tempFolder != null && FileEx.create(tempFolder).isDirectory()) {
       try (DirectoryStream<Path> dstream = Files.newDirectoryStream(tempFolder)) {
         for (final Path file: dstream) {
           try {
@@ -102,6 +103,7 @@ public final class IOHandler implements Writeable
     }
     Files.createDirectory(tempFolder);
 
+    // placing content of .sav resource in the temporary folder
     final List<ResourceEntry> entries = new ArrayList<>(fileEntries.size());
     for (final SavResourceEntry entry: fileEntries) {
       Path file = tempFolder.resolve(entry.getResourceName());
@@ -110,6 +112,15 @@ public final class IOHandler implements Writeable
       }
       entries.add(new FileResourceEntry(file));
     }
+
+    // placing copy of associated .gam resource in the temporary folder
+    String gamFile = Profile.getProperty(Profile.Key.GET_GAM_NAME);
+    Path srcFile = entry.getActualPath().getParent().resolve(gamFile);
+    if (Files.isRegularFile(srcFile)) {
+      Path dstFile = tempFolder.resolve(gamFile);
+      Files.copy(srcFile, dstFile);
+    }
+
     return entries;
   }
 
@@ -128,7 +139,7 @@ public final class IOHandler implements Writeable
   {
     for (int idx = 0; idx < Integer.MAX_VALUE; idx++) {
       Path path = Profile.getHomeRoot().resolve(String.format("%s.%03d", entry.getTreeFolderName(), idx));
-      if (!Files.exists(path)) {
+      if (!FileEx.create(path).exists()) {
         return path;
       }
     }

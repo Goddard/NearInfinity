@@ -17,7 +17,7 @@ import javax.swing.AbstractListModel;
  */
 public class SimpleListModel<E> extends AbstractListModel<E>
 {
-  private final Vector<E> delegate = new Vector<E>();
+  private final Vector<E> delegate = new Vector<>();
 
   /** Constructs an empty ListModel object with a default capacity of 10 elements. */
   public SimpleListModel()
@@ -212,6 +212,7 @@ public class SimpleListModel<E> extends AbstractListModel<E>
   public void removeElementAt(int index)
   {
     delegate.removeElementAt(index);
+    fireIntervalRemoved(this, index, index);
   }
 
   /** Inserts the specified object as a component in this list at the specified {@code index}. */

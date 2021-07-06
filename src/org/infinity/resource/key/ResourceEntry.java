@@ -31,12 +31,13 @@ import org.infinity.resource.spl.SplResource;
 import org.infinity.resource.sto.StoResource;
 import org.infinity.resource.text.PlainTextResource;
 import org.infinity.search.SearchOptions;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.StreamUtils;
 
 public abstract class ResourceEntry implements Comparable<ResourceEntry>
 {
   // list of file extensions not shown in the resource tree
-  private static final HashSet<String> skippedExtensions = new HashSet<String>();
+  private static final HashSet<String> skippedExtensions = new HashSet<>();
 
   static {
     skippedExtensions.add("BAK");
@@ -47,7 +48,7 @@ public abstract class ResourceEntry implements Comparable<ResourceEntry>
 
   static int[] getLocalFileInfo(Path file)
   {
-    if (file != null && Files.isRegularFile(file)) {
+    if (file != null && FileEx.create(file).isFile()) {
       try (SeekableByteChannel ch = Files.newByteChannel(file, StandardOpenOption.READ)) {
         ByteBuffer bb = StreamUtils.getByteBuffer((int)ch.size());
         if (ch.read(bb) < ch.size()) {
@@ -92,6 +93,14 @@ public abstract class ResourceEntry implements Comparable<ResourceEntry>
       }
     }
     return null;
+  }
+
+  @Override
+  public int hashCode()
+  {
+    int hash = 7;
+    hash = 31 * hash + ((searchString == null) ? 0 : searchString.hashCode());
+    return hash;
   }
 
   @Override

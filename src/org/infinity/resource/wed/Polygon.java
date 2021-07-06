@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.wed;
@@ -8,16 +8,16 @@ import java.nio.ByteBuffer;
 
 import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.Flag;
-import org.infinity.datatype.HexNumber;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.SectionCount;
 import org.infinity.datatype.Unknown;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.StructEntry;
 import org.infinity.resource.vertex.Vertex;
 
-public abstract class Polygon extends AbstractStruct implements AddRemovable, HasAddRemovable
+public abstract class Polygon extends AbstractStruct implements AddRemovable, HasChildStructs
 {
   // WED/Polygon-specific field labels
   public static final String WED_POLY_VERTEX_INDEX  = "Vertex index";
@@ -37,10 +37,8 @@ public abstract class Polygon extends AbstractStruct implements AddRemovable, Ha
     super(superStruct, name, buffer, offset, 8);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new Vertex()};
   }
@@ -52,34 +50,21 @@ public abstract class Polygon extends AbstractStruct implements AddRemovable, Ha
   }
 
   @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-//--------------------- Begin Interface AddRemovable ---------------------
-
-  @Override
   public boolean canRemove()
   {
     return true;
   }
 
-//--------------------- End Interface AddRemovable ---------------------
-
   @Override
   protected void setAddRemovableOffset(AddRemovable datatype)
   {
     if (datatype instanceof Vertex) {
-      int index = ((DecNumber)getAttribute(WED_POLY_VERTEX_INDEX)).getValue();
-      index += ((DecNumber)getAttribute(WED_POLY_NUM_VERTICES)).getValue();
+      int index = ((IsNumeric)getAttribute(WED_POLY_VERTEX_INDEX)).getValue();
+      index += ((IsNumeric)getAttribute(WED_POLY_NUM_VERTICES)).getValue();
       AbstractStruct superStruct = getParent();
       while (superStruct.getParent() != null)
         superStruct = superStruct.getParent();
-      int offset = ((HexNumber)superStruct.getAttribute(WedResource.WED_OFFSET_VERTICES)).getValue();
+      int offset = ((IsNumeric)superStruct.getAttribute(WedResource.WED_OFFSET_VERTICES)).getValue();
       datatype.setOffset(offset + 4 * index);
       ((AbstractStruct)datatype).realignStructOffsets();
     }
@@ -87,8 +72,8 @@ public abstract class Polygon extends AbstractStruct implements AddRemovable, Ha
 
   public void readVertices(ByteBuffer buffer, int offset) throws Exception
   {
-    DecNumber firstVertex = (DecNumber)getAttribute(WED_POLY_VERTEX_INDEX);
-    DecNumber numVertices = (DecNumber)getAttribute(WED_POLY_NUM_VERTICES);
+    IsNumeric firstVertex = (IsNumeric)getAttribute(WED_POLY_VERTEX_INDEX);
+    IsNumeric numVertices = (IsNumeric)getAttribute(WED_POLY_NUM_VERTICES);
     for (int i = 0; i < numVertices.getValue(); i++) {
       addField(new Vertex(this, buffer, offset + 4 * (firstVertex.getValue() + i), i));
     }

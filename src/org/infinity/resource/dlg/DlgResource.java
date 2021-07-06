@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.dlg;
@@ -40,7 +40,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Profile;
 import org.infinity.resource.Resource;
@@ -92,7 +92,7 @@ import org.infinity.util.io.StreamUtils;
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/dlg_v1.htm</a>
  */
 public final class DlgResource extends AbstractStruct
-    implements Resource, HasAddRemovable, HasViewerTabs, ActionListener
+    implements Resource, HasChildStructs, HasViewerTabs, ActionListener
 {
   // DLG-specific field labels
   public static final String DLG_OFFSET_STATES            = "States offset";
@@ -122,10 +122,8 @@ public final class DlgResource extends AbstractStruct
     super(entry);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new State(), new Transition(), new StateTrigger(),
                               new ResponseTrigger(), new Action()};
@@ -136,17 +134,6 @@ public final class DlgResource extends AbstractStruct
   {
     return entry;
   }
-
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-// --------------------- Begin Interface HasViewerTabs ---------------------
 
   @Override
   public int getViewerTabCount()
@@ -192,10 +179,6 @@ public final class DlgResource extends AbstractStruct
     return (index == 0);
   }
 
-// --------------------- End Interface HasViewerTabs ---------------------
-
-// --------------------- Begin Interface Writeable ---------------------
-
   @Override
   public void write(OutputStream os) throws IOException
   {
@@ -221,10 +204,6 @@ public final class DlgResource extends AbstractStruct
       }
     }
   }
-
-// --------------------- End Interface Writeable ---------------------
-
-// --------------------- Begin Interface ActionListener ---------------------
 
   @Override
   public void actionPerformed(ActionEvent e)
@@ -252,8 +231,6 @@ public final class DlgResource extends AbstractStruct
       }
     }
   }
-
-// --------------------- End Interface ActionListener ---------------------
 
   @Override
   protected void viewerInitialized(StructViewer viewer)
@@ -482,9 +459,9 @@ public final class DlgResource extends AbstractStruct
   {
     if (datatype instanceof StateTrigger) {
       StateTrigger trigger = (StateTrigger)datatype;
-      int ofsStates = ((SectionOffset)getAttribute(DLG_OFFSET_STATES)).getValue();
-      int numStates = ((SectionCount)getAttribute(DLG_NUM_STATES)).getValue();
-      int ofsTriggers = ((SectionOffset)getAttribute(DLG_OFFSET_STATE_TRIGGERS)).getValue();
+      int ofsStates = ((IsNumeric)getAttribute(DLG_OFFSET_STATES)).getValue();
+      int numStates = ((IsNumeric)getAttribute(DLG_NUM_STATES)).getValue();
+      int ofsTriggers = ((IsNumeric)getAttribute(DLG_OFFSET_STATE_TRIGGERS)).getValue();
       int idxTrigger = (trigger.getOffset() - ofsTriggers) / trigger.getSize();
 
       // adjusting state trigger references
@@ -511,9 +488,9 @@ public final class DlgResource extends AbstractStruct
       }
     } else if (datatype instanceof ResponseTrigger) {
       ResponseTrigger trigger = (ResponseTrigger)datatype;
-      int ofsTrans = ((SectionOffset)getAttribute(DLG_OFFSET_RESPONSES)).getValue();
-      int numTrans = ((SectionCount)getAttribute(DLG_NUM_RESPONSES)).getValue();
-      int ofsTriggers = ((SectionOffset)getAttribute(DLG_OFFSET_RESPONSE_TRIGGERS)).getValue();
+      int ofsTrans = ((IsNumeric)getAttribute(DLG_OFFSET_RESPONSES)).getValue();
+      int numTrans = ((IsNumeric)getAttribute(DLG_NUM_RESPONSES)).getValue();
+      int ofsTriggers = ((IsNumeric)getAttribute(DLG_OFFSET_RESPONSE_TRIGGERS)).getValue();
       int idxTrigger = (trigger.getOffset() - ofsTriggers) / trigger.getSize();
 
       // adjusting response trigger references
@@ -544,9 +521,9 @@ public final class DlgResource extends AbstractStruct
       }
     } else if (datatype instanceof Action) {
       Action action = (Action)datatype;
-      int ofsTrans = ((SectionOffset)getAttribute(DLG_OFFSET_RESPONSES)).getValue();
-      int numTrans = ((SectionCount)getAttribute(DLG_NUM_RESPONSES)).getValue();
-      int ofsActions = ((SectionOffset)getAttribute(DLG_OFFSET_ACTIONS)).getValue();
+      int ofsTrans = ((IsNumeric)getAttribute(DLG_OFFSET_RESPONSES)).getValue();
+      int numTrans = ((IsNumeric)getAttribute(DLG_NUM_RESPONSES)).getValue();
+      int ofsActions = ((IsNumeric)getAttribute(DLG_OFFSET_ACTIONS)).getValue();
       int idxAction = (action.getOffset() - ofsActions) / action.getSize();
 
       // adjusting action references

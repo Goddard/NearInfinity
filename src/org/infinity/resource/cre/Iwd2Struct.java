@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2019 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.cre;
@@ -9,9 +9,9 @@ import java.nio.ByteBuffer;
 import org.infinity.datatype.DecNumber;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 
-public final class Iwd2Struct extends AbstractStruct implements HasAddRemovable
+public final class Iwd2Struct extends AbstractStruct implements HasChildStructs
 {
   // CRE/Iwd2Struct-specific field labels
   public static final String CRE_STRUCT_NUM_MEMORIZABLE = "# memorizable (total)";
@@ -52,10 +52,8 @@ public final class Iwd2Struct extends AbstractStruct implements HasAddRemovable
     setOffset(offset);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     switch (type) {
       case TYPE_SPELL:
@@ -76,14 +74,6 @@ public final class Iwd2Struct extends AbstractStruct implements HasAddRemovable
   {
     return entry;
   }
-
-  @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
 
   @Override
   protected void datatypeAdded(AddRemovable datatype)

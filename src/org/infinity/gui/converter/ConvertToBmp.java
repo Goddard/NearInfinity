@@ -18,9 +18,9 @@ import java.awt.image.BufferedImage;
 import java.awt.image.DataBufferInt;
 import java.beans.PropertyChangeEvent;
 import java.beans.PropertyChangeListener;
+import java.io.File;
 import java.io.IOException;
 import java.io.OutputStream;
-import java.io.File;
 import java.nio.ByteBuffer;
 import java.nio.file.DirectoryStream;
 import java.nio.file.Files;
@@ -55,6 +55,7 @@ import org.infinity.icon.Icons;
 import org.infinity.resource.Profile;
 import org.infinity.resource.graphics.ColorConvert;
 import org.infinity.util.SimpleListModel;
+import org.infinity.util.io.FileEx;
 import org.infinity.util.io.FileManager;
 import org.infinity.util.io.StreamUtils;
 
@@ -98,7 +99,7 @@ public class ConvertToBmp extends ChildFrame
     }
     Path file = FileManager.resolve(rootPath);
     JFileChooser fc = new JFileChooser(file.toFile());
-    if (!Files.isDirectory(file)) {
+    if (!FileEx.create(file).isDirectory()) {
         fc.setSelectedFile(file.toFile());
     }
     if (title == null) {
@@ -323,7 +324,7 @@ public class ConvertToBmp extends ChildFrame
                           GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0);
     pInputButtons.add(pRemove, c);
 
-    modelInputFiles = new SimpleListModel<String>();
+    modelInputFiles = new SimpleListModel<>();
     listInputFiles = new JList<>(modelInputFiles);
     JScrollPane scroll = new JScrollPane(listInputFiles);
     JPanel pInputFrame = new JPanel(new GridBagLayout());
@@ -481,7 +482,7 @@ public class ConvertToBmp extends ChildFrame
     }
     Path[] files = getOpenFileName(this, "Choose file(s)", rootPath, true, getGraphicsFilters(), 0);
     if (files != null) {
-      List<String> skippedFiles = new ArrayList<String>();
+      List<String> skippedFiles = new ArrayList<>();
       int idx = listInputFiles.getSelectedIndex() + 1;
       for (final Path file: files) {
         if (isValidInput(file)) {
@@ -520,15 +521,15 @@ public class ConvertToBmp extends ChildFrame
       rootPath = FileManager.resolve(modelInputFiles.get(modelInputFiles.size() - 1));
     }
     Path path = getOpenPathName(this, "Choose folder", rootPath);
-    if (path != null && Files.isDirectory(path)) {
+    if (path != null && FileEx.create(path).isDirectory()) {
       // adding all files in the directory
       FileNameExtensionFilter[] filters = getGraphicsFilters();
-      List<String> skippedFiles = new ArrayList<String>();
+      List<String> skippedFiles = new ArrayList<>();
       int idx = listInputFiles.getSelectedIndex() + 1;
       try (DirectoryStream<Path> dstream = Files.newDirectoryStream(path)) {
         for (final Path file: dstream) {
           for (final FileNameExtensionFilter filter: filters) {
-            if (Files.isRegularFile(file) && filter.accept(file.toFile())) {
+            if (FileEx.create(file).isFile() && filter.accept(file.toFile())) {
               if (isValidInput(file)) {
                 modelInputFiles.addElement(file.toString());
                 idx++;
@@ -609,7 +610,7 @@ public class ConvertToBmp extends ChildFrame
 
   private List<String> convert()
   {
-    List<String> result = new ArrayList<String>(2);
+    List<String> result = new ArrayList<>(2);
     final String progressMsg = "Converting file %d / %d";
     int progressIdx = 0, progressMax = modelInputFiles.size() + 1;
     ProgressMonitor progress = new ProgressMonitor(this, "Converting files...", "Preparing", 0, progressMax);
@@ -633,7 +634,7 @@ public class ConvertToBmp extends ChildFrame
         // 1. prepare data
         Path inFile = FileManager.resolve(modelInputFiles.get(i));
         Path outFile = FileManager.resolve(outPath, StreamUtils.replaceFileExtension(inFile.getFileName().toString(), "BMP"));
-        if (Files.exists(outFile)) {
+        if (FileEx.create(outFile).exists()) {
           if (cbOverwrite.getSelectedIndex() == 0) {          // ask
             String msg = String.format("File %s already exists. Overwrite?", outFile.getFileName());
             int ret = JOptionPane.showConfirmDialog(this, msg, "Overwrite?", JOptionPane.YES_NO_CANCEL_OPTION);

@@ -1,5 +1,5 @@
 // Near Infinity - An Infinity Engine Browser and Editor
-// Copyright (C) 2001 - 2018 Jon Olav Hauglid
+// Copyright (C) 2001 - 2020 Jon Olav Hauglid
 // See LICENSE.txt for license information
 
 package org.infinity.resource.wed;
@@ -15,6 +15,7 @@ import javax.swing.JComponent;
 
 import org.infinity.datatype.DecNumber;
 import org.infinity.datatype.HexNumber;
+import org.infinity.datatype.IsNumeric;
 import org.infinity.datatype.RemovableDecNumber;
 import org.infinity.datatype.SectionCount;
 import org.infinity.datatype.SectionOffset;
@@ -24,7 +25,7 @@ import org.infinity.gui.hexview.BasicColorMap;
 import org.infinity.gui.hexview.StructHexViewer;
 import org.infinity.resource.AbstractStruct;
 import org.infinity.resource.AddRemovable;
-import org.infinity.resource.HasAddRemovable;
+import org.infinity.resource.HasChildStructs;
 import org.infinity.resource.HasViewerTabs;
 import org.infinity.resource.Resource;
 import org.infinity.resource.StructEntry;
@@ -60,7 +61,7 @@ import org.infinity.util.Misc;
  * @see <a href="https://gibberlings3.github.io/iesdp/file_formats/ie_formats/wed_v1.3.htm">
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/wed_v1.3.htm</a>
  */
-public final class WedResource extends AbstractStruct implements Resource, HasAddRemovable, HasViewerTabs
+public final class WedResource extends AbstractStruct implements Resource, HasChildStructs, HasViewerTabs
 {
   // WED-specific field labels
   public static final String WED_NUM_OVERLAYS               = "# overlays";
@@ -83,10 +84,8 @@ public final class WedResource extends AbstractStruct implements Resource, HasAd
     super(entry);
   }
 
-// --------------------- Begin Interface HasAddRemovable ---------------------
-
   @Override
-  public AddRemovable[] getAddRemovables() throws Exception
+  public AddRemovable[] getPrototypes() throws Exception
   {
     return new AddRemovable[]{new Door(), new WallPolygon(), new Wallgroup()};
   }
@@ -98,25 +97,10 @@ public final class WedResource extends AbstractStruct implements Resource, HasAd
   }
 
   @Override
-  public boolean confirmRemoveEntry(AddRemovable entry) throws Exception
-  {
-    return true;
-  }
-
-// --------------------- End Interface HasAddRemovable ---------------------
-
-
-// --------------------- Begin Interface Writeable ---------------------
-
-  @Override
   public void write(OutputStream os) throws IOException
   {
     super.writeFlatFields(os);
   }
-
-// --------------------- End Interface Writeable ---------------------
-
-//--------------------- Begin Interface HasViewerTabs ---------------------
 
   @Override
   public int getViewerTabCount()
@@ -144,8 +128,6 @@ public final class WedResource extends AbstractStruct implements Resource, HasAd
   {
     return false;
   }
-
-//--------------------- End Interface HasViewerTabs ---------------------
 
   @Override
   protected void viewerInitialized(StructViewer viewer)
@@ -340,8 +322,8 @@ public final class WedResource extends AbstractStruct implements Resource, HasAd
     }
 
     // Assumes polygon offset is correct
-    int offset = ((SectionOffset)getAttribute(WED_OFFSET_WALL_POLYGONS)).getValue();
-    offset += ((SectionCount)getAttribute(WED_NUM_WALL_POLYGONS)).getValue() * 18;
+    int offset = ((IsNumeric)getAttribute(WED_OFFSET_WALL_POLYGONS)).getValue();
+    offset += ((IsNumeric)getAttribute(WED_NUM_WALL_POLYGONS)).getValue() * 18;
     for (final StructEntry o : getFields()) {
       if (o instanceof Door) {
         ((Door)o).updatePolygonsOffset(offset);
@@ -352,7 +334,7 @@ public final class WedResource extends AbstractStruct implements Resource, HasAd
   private void updateVertices()
   {
     // Assumes vertices offset is correct
-    int offset = ((HexNumber)getAttribute(WED_OFFSET_VERTICES)).getValue();
+    int offset = ((IsNumeric)getAttribute(WED_OFFSET_VERTICES)).getValue();
     int count = 0;
     for (final StructEntry o : getFields()) {
       if (o instanceof Polygon) {

@@ -27,7 +27,7 @@ import org.infinity.resource.StructEntry;
 import org.infinity.resource.graphics.BamResource;
 import org.infinity.resource.graphics.MosResource;
 import org.infinity.resource.key.ResourceEntry;
-import org.infinity.util.Pair;
+import org.infinity.util.tuples.Couple;
 
 /**
  * This resource describes the layout of the GUI screens (the graphics for the
@@ -36,14 +36,14 @@ import org.infinity.util.Pair;
  * @see <a href="https://gibberlings3.github.io/iesdp/file_formats/ie_formats/chu_v1.htm">
  * https://gibberlings3.github.io/iesdp/file_formats/ie_formats/chu_v1.htm</a>
  */
-public final class ChuResource extends AbstractStruct implements Resource, HasViewerTabs //, HasAddRemovable
+public final class ChuResource extends AbstractStruct implements Resource, HasViewerTabs //, HasChildStructs
 {
   // CHU-specific field labels
   public static final String CHU_NUM_PANELS       = "# panels";
   public static final String CHU_OFFSET_CONTROLS  = "Controls offset";
   public static final String CHU_OFFSET_PANELS    = "Panels offset";
 
-  private List<Pair<Integer>> listControls;
+  private List<Couple<Integer, Integer>> listControls;
   private int ofsPanels, numPanels, sizePanels, ofsControls, numControls;
   private Viewer detailViewer;
   private StructHexViewer hexViewer;
@@ -163,7 +163,7 @@ public final class ChuResource extends AbstractStruct implements Resource, HasVi
   public int getControlOffset(int index)
   {
     if (index >= 0 && index < listControls.size()) {
-      return listControls.get(index).getFirst();
+      return listControls.get(index).getValue0();
     } else {
       return 0;
     }
@@ -173,7 +173,7 @@ public final class ChuResource extends AbstractStruct implements Resource, HasVi
   public int getControlSize(int index)
   {
     if (index >= 0 && index < listControls.size()) {
-      return listControls.get(index).getSecond();
+      return listControls.get(index).getValue1();
     } else {
       return 0;
     }
@@ -303,11 +303,11 @@ public final class ChuResource extends AbstractStruct implements Resource, HasVi
     for (int i = 0; i < numControls; i++, curOfs += 8) {
       ofs = buffer.getInt(curOfs);
       len = buffer.getInt(curOfs + 4);
-      listControls.add(new Pair<>(Integer.valueOf(ofs), Integer.valueOf(len)));
+      listControls.add(Couple.with(Integer.valueOf(ofs), Integer.valueOf(len)));
     }
 
     // adding virtual entry for determining the true size of the last control entry
     ofs = Math.max(ofs + len, buffer.limit());
-    listControls.add(new Pair<>(Integer.valueOf(ofs), Integer.valueOf(0)));
+    listControls.add(Couple.with(Integer.valueOf(ofs), Integer.valueOf(0)));
   }
 }
