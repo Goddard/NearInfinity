@@ -872,7 +872,6 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     // setting up tabbed pane
     tabPane = new JTabbedPane(JTabbedPane.TOP);
-
     JPanel pTabV1 = new JPanel(new GridBagLayout());
     c = ViewerUtil.setGBC(c, 0, 0, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
             GridBagConstraints.HORIZONTAL, new Insets(4, 4, 2, 4), 0, 0);
@@ -893,11 +892,17 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     JPanel pTabV2 = new JPanel(new GridBagLayout());
     c = ViewerUtil.setGBC(c, 0, 0, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
-            GridBagConstraints.HORIZONTAL, new Insets(4, 4, 2, 4), 0, 0);
+            GridBagConstraints.HORIZONTAL, new Insets(0, 4, 2, 4), 0, 0);
     pTabV2.add(pFilesV2, c);
-    c = ViewerUtil.setGBC(c, 0, 1, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
+    c = ViewerUtil.setGBC(c, 0, 1, 1, 1, 1.0, 0.0, GridBagConstraints.NORTHWEST,
             GridBagConstraints.HORIZONTAL, new Insets(2, 4, 4, 4), 0, 0);
     pTabV2.add(pOptionsV2, c);
+
+    JPanel spacePanel = new JPanel(new GridBagLayout());
+    c = ViewerUtil.setGBC(c, 0, 1, 1, 1, 1.0, 1.0, GridBagConstraints.NORTHWEST,
+            GridBagConstraints.HORIZONTAL, new Insets(2, 4, 4, 4), 0, 0);
+
+    pTabV2.add(spacePanel, c);
     tabPane.addTab("PVRZ-based (V2)", pTabV2);
     tabPane.setMnemonicAt(1, KeyEvent.VK_2);
     tabPane.setSelectedIndex(0);
@@ -939,7 +944,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
     // finalizing dialog initialization
     pack();
-    setMinimumSize(new Dimension(250, 400)); //getPreferredSize()
+    setMinimumSize(new Dimension(1000, 800)); //getPreferredSize()
     setLocationRelativeTo(getParent());
     setVisible(true);
   }
