@@ -79,6 +79,8 @@ import org.infinity.util.io.StreamUtils;
 public class ConvertToMos extends ChildFrame implements ActionListener, PropertyChangeListener, ChangeListener, FocusListener {
   private static String currentDir = Profile.getGameRoot().toString();
 
+  private int fileDoneCount = 0;
+
   private JTabbedPane tabPane;
   private JTable tfInputTableV1;
   private JTable tfOutputTableV1;
@@ -209,12 +211,7 @@ public class ConvertToMos extends ChildFrame implements ActionListener, Property
   public ConvertToMos()
   {
     super("Convert to MOS", true);
-    SwingUtilities.invokeLater(new Runnable() {
-      @Override
-      public void run() {
-        init();
-      }
-    });
+    init();
   }
 
 //--------------------- Begin Class ChildFrame ---------------------
@@ -238,6 +235,21 @@ class TaskPropertyChange implements PropertyChangeListener {
     if ("progress".equals(event.getPropertyName())) {
       Integer progressIndex = (Integer) event.getNewValue();
       tfOutputTableV1.setValueAt(progressIndex +"%", fileCount, 1);
+
+//      System.out.println(fileCount);
+      if(progressIndex == 100) {
+        fileDoneCount++;
+        Logger.getLogger(this.getClass().getName()).log(Level.INFO, "--- File Done Count --- " + fileDoneCount);
+
+        if(fileDoneCount == tfOutputTableV1.getRowCount()) {
+          fileDoneCount = 0;
+          Logger.getLogger(this.getClass().getName()).log(Level.INFO, "--- All files converted --- ");
+
+          if(cbCloseOnExit.isSelected()) {
+            hideWindow();
+          }
+        }
+      }
     }
   }
 }
@@ -415,6 +427,7 @@ class TaskPropertyChange implements PropertyChangeListener {
 
       // generating conversion summary
       result.add("Conversion finished successfully.");
+
       return true;
     }
 
@@ -920,6 +933,10 @@ class TaskPropertyChange implements PropertyChangeListener {
     bCancel.setMargin(new Insets(i.top + 2, i.left, i.bottom + 2, i.right));
 
     JPanel pButtons = new JPanel(new GridBagLayout());
+    c = ViewerUtil.setGBC(c, 0, 0, 1, 1, 0.0, 0.0, GridBagConstraints.LINE_START,
+            GridBagConstraints.NONE, new Insets(0, 0, 0, 0), 0, 0);
+    pButtons.add(cbCloseOnExit, c);
+
     c = ViewerUtil.setGBC(c, 1, 0, 1, 1, 1.0, 0.0, GridBagConstraints.LINE_START,
             GridBagConstraints.HORIZONTAL, new Insets(0, 0, 0, 0), 0, 0);
     pButtons.add(new JPanel(), c);
@@ -954,11 +971,31 @@ class TaskPropertyChange implements PropertyChangeListener {
   {
     clear();
     setVisible(false);
+    this.dispose();
+    this.dispatchEvent(new WindowEvent(this, WindowEvent.WINDOW_CLOSING));
   }
 
   // resetting dialog state
   private void clear()
   {
+    tfInputTableV1.clearSelection();
+    tfOutputTableV1.clearSelection();
+
+    while(tfInputTableV1.getRowCount() > 0)
+    {
+      ((DefaultTableModel) tfInputTableV1.getModel()).removeRow(0);
+    }
+
+    while(tfOutputTableV1.getRowCount() > 0)
+    {
+      ((DefaultTableModel) tfOutputTableV1.getModel()).removeRow(0);
+    }
+
+    inputTableModel.setRowCount(0);
+    inputTableModel.setNumRows(0);
+    outputTableModel.setRowCount(0);
+    outputTableModel.setNumRows(0);
+
     tfInputV2.setText("");
     tfOutputV1.setText("");
     tfOutputV2.setText("");
@@ -1003,7 +1040,8 @@ class TaskPropertyChange implements PropertyChangeListener {
 
   private File[] getImageFileName()
   {
-    JFileChooser fc = new JFileChooser();
+    Path file = FileManager.resolve(currentDir);
+    JFileChooser fc = new JFileChooser(file.toFile());
 
     fc.setDialogTitle("Select input graphics files");
     fc.setDialogType(JFileChooser.OPEN_DIALOG);
@@ -1016,6 +1054,7 @@ class TaskPropertyChange implements PropertyChangeListener {
     fc.setFileFilter(filters[0]);
     int ret = fc.showOpenDialog(this);
     if (ret == JFileChooser.APPROVE_OPTION) {
+      currentDir = fc.getSelectedFiles()[0].toPath().getParent().toString();
       File[] filePaths = fc.getSelectedFiles();
       for(File fileSelected : filePaths) {
         Logger.getLogger(this.getClass().getName()).log(Level.INFO, "File Selected : " + fileSelected.getName());
